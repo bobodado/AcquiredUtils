@@ -1,5 +1,0 @@
-#!/bin/sh
-
-CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
-
-exec "$JAVACMD" "$@"
