@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class HandledScreenMixin {
     private static final int S = 3;
     @Inject(method = "renderSlot", at = @At("TAIL"))
-    private void onSlot(GuiGraphics g, Slot slot, CallbackInfo ci) {
+    private void onSlot(GuiGraphics g, Slot slot, int x, int y, CallbackInfo ci) {
         if (slot.hasItem()) {
             RarityType r = RarityDetector.detectRarity(slot.getItem());
             if (r != RarityType.COMMON) renderIndicator(g, slot, r);
@@ -22,12 +22,11 @@ public class HandledScreenMixin {
     }
     private void renderIndicator(GuiGraphics g, Slot slot, RarityType r) {
         int x = slot.x, y = slot.y + 16 - S * 3;
-        g.pose().pushPose();
-        g.pose().translate(0, 0, 250);
+        g.pose().pushMatrix();
         int c = 0xFF000000 | r.getColor();
         for (int row = 0; row < 3; row++)
             for (int col = 0; col < 3; col++)
                 g.fill(x + col * S, y + row * S, x + col * S + S, y + row * S + S, c);
-        g.pose().popPose();
+        g.pose().popMatrix();
     }
 }

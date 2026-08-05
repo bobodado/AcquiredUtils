@@ -6,6 +6,7 @@ import com.acquiredutils.rarity.RarityType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -41,19 +42,27 @@ public class HudEditorScreen extends Screen {
         super.render(g, mx, my, pt);
     }
     private boolean over(int mx, int my) { return mx >= px && mx <= px + PW && my >= py && my <= py + PH; }
-    @Override public boolean mouseClicked(double mx, double my, int b) {
-        if (b == 0 && over((int)mx, (int)my)) { dragging = true; offX = (int)mx - px; offY = (int)my - py; return true; }
-        return super.mouseClicked(mx, my, b);
-    }
-    @Override public boolean mouseDragged(double mx, double my, int b, double dx, double dy) {
-        if (dragging && b == 0) {
-            px = Math.max(0, Math.min(width - PW, (int)mx - offX));
-            py = Math.max(0, Math.min(height - PH, (int)my - offY));
+    @Override public boolean mouseClicked(MouseButtonEvent event, boolean bl) {
+        if (event.button() == 0 && over((int)event.x(), (int)event.y())) {
+            dragging = true;
+            offX = (int)event.x() - px;
+            offY = (int)event.y() - py;
             return true;
         }
-        return super.mouseDragged(mx, my, b, dx, dy);
+        return super.mouseClicked(event, bl);
     }
-    @Override public boolean mouseReleased(double mx, double my, int b) { if (b == 0) dragging = false; return super.mouseReleased(mx, my, b); }
+    @Override public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
+        if (dragging && event.button() == 0) {
+            px = Math.max(0, Math.min(width - PW, (int)event.x() - offX));
+            py = Math.max(0, Math.min(height - PH, (int)event.y() - offY));
+            return true;
+        }
+        return super.mouseDragged(event, dx, dy);
+    }
+    @Override public boolean mouseReleased(MouseButtonEvent event) {
+        if (event.button() == 0) dragging = false;
+        return super.mouseReleased(event);
+    }
     @Override public void onClose() {
         ConfigManager.get().notificationX = px;
         ConfigManager.get().notificationY = py;

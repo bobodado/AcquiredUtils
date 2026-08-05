@@ -30,10 +30,10 @@ public class NotificationRenderer {
         int bg = (abg << 24) | 0x141414;
         int border = (afg << 24) | (n.getRarity().getColor() & 0xFFFFFF);
         int tc = (afg << 24) | 0xFFFFFF;
-        g.pose().pushPose();
+        g.pose().pushMatrix();
         g.fill(x, y, x + W, y + H, bg);
         g.fill(x, y, x + BORDER, y + H, border);
         g.drawString(Minecraft.getInstance().font, n.getDisplayText(), x + BORDER + 8, y + (H - 8) / 2, tc, false);
-        g.pose().popPose();
+        g.pose().popMatrix();
     }
 }
