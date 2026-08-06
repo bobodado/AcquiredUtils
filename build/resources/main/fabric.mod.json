@@ -1,1 +1,31 @@
-{"schemaVersion":1,"id":"acquiredutils","version":"1.0.0","name":"AcquiredUtils","description":"Elegant item pickup notifications with rarity detection and HUD customization.","authors":["AcquiredUtils"],"license":"MIT","environment":"client","entrypoints":{"client":["com.acquiredutils.client.AcquiredUtilsClient"],"modmenu":["com.acquiredutils.integration.ModMenuIntegration"]},"mixins":["acquiredutils.mixins.json"],"depends":{"fabricloader":">=0.16.9","minecraft":">=1.21.11","fabric-api":"*","yet_another_config_lib_v3":">=3.6.1","modmenu":">=11.0.3"}}
+{
+  "schemaVersion": 1,
+  "id": "acquiredutils",
+  "version": "1.0.0",
+  "name": "AcquiredUtils",
+  "description": "Custom client utilities with an NEU-style configuration GUI.",
+  "authors": [
+    "YourName"
+  ],
+  "contact": {
+    "homepage": "https://example.com",
+    "sources": "https://github.com/yourname/acquiredutils"
+  },
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.acquiredutils.AcquiredUtils"
+    ],
+    "client": [
+      "com.acquiredutils.client.AcquiredUtilsClient"
+    ]
+  },
+  "mixins": [],
+  "depends": {
+    "fabricloader": ">=0.16.9",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
