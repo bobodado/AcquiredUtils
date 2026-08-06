@@ -1,4 +1,4 @@
 {
-  "key.acquiredutils.open_config": "Open AcquiredUtils Config",
-  "category.acquiredutils": "AcquiredUtils"
+  "key.acquiredutils.config": "Open AcquiredUtils Config",
+  "category.acquiredutils.general": "AcquiredUtils"
 }
