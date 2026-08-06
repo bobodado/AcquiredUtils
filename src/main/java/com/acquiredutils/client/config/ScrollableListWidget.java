@@ -8,19 +8,19 @@ import java.util.List;
 /**
  * The scrollable content area that lays out an arbitrary list of {@link Setting}s
  * top-to-bottom and clips them to its bounds.
- * <p>
+ *
  * This is a direct translation of the scrolling math in NEU's
  * {@code NEUConfigEditor} (the {@code optionsScroll} LerpingInteger, the
  * wheel-delta handling in {@code mouseInput()}, and the scrollbar geometry
  * drawn alongside the option list):
- * <ul>
- *   <li>Mouse wheel moves the scroll target by 30px per notch (NEU: {@code dWheel * 30}).</li>
- *   <li>The target is clamped to {@code [0, contentHeight - viewHeight]} so you can't
- *       scroll past the last row (NEU computed this as {@code barMax}).</li>
- *   <li>The scrollbar thumb's height is {@code viewHeight / contentHeight} of the track,
- *       and its position is {@code scroll / contentHeight} down the track - same ratio
- *       NEU used for {@code barSize} / {@code barStart} / {@code barEnd}.</li>
- * </ul>
+ *
+ *   - Mouse wheel moves the scroll target by 30px per notch (NEU: {@code dWheel * 30}).
+ *   - The target is clamped to {@code [0, contentHeight - viewHeight]} so you can't
+ *     scroll past the last row (NEU computed this as {@code barMax}).
+ *   - The scrollbar thumb's height is {@code viewHeight / contentHeight} of the track,
+ *     and its position is {@code scroll / contentHeight} down the track - same ratio
+ *     NEU used for {@code barSize} / {@code barStart} / {@code barEnd}.
+ *
  * The only meaningful change is swapping NEU's {@code GlScissorStack} (a manual
  * push/pop stack over raw GL11 scissor calls, needed because 1.8.9 had no scissor
  * helper) for {@code GuiGraphics#enableScissor}, which does the same clipping
@@ -28,7 +28,7 @@ import java.util.List;
  */
 public class ScrollableListWidget {
 
-    private static final int ROW_GAP = 6;
+    private static final int ROW_GAP = 5;
     private static final int SCROLLBAR_W = 5;
     private static final int WHEEL_STEP = 30;
 
@@ -93,7 +93,7 @@ public class ScrollableListWidget {
             // before calling editor.render(), avoiding wasted draw calls off-screen).
             if (cursorY + rowHeight >= y && cursorY <= y + height) {
                 drawRowChrome(graphics, x, cursorY, width, rowHeight);
-                setting.render(graphics, font, x + 8, cursorY + 4, width - 16, mouseX, mouseY, partialTick);
+                setting.render(graphics, font, x + 10, cursorY, width - 20, mouseX, mouseY, partialTick);
             }
 
             cursorY += rowHeight + ROW_GAP;
@@ -109,16 +109,19 @@ public class ScrollableListWidget {
         drawScrollbar(graphics);
     }
 
-    /** Row background - NEU's shared floating-rect look (dark fill, light top/left edge, dark bottom/right edge). */
+    /**
+     * Row background - NEU's shared floating-rect look.
+     * Exact colors from NEU's RenderUtils.drawFloatingRectDark():
+     *   left/top edge  : 0xff08080E
+     *   right/bottom   : 0xff28282E
+     *   fill           : 0x6008080E
+     */
     private void drawRowChrome(GuiGraphics graphics, int rx, int ry, int rw, int rh) {
-        int main = 0xD0202026;
-        int light = 0xFF303036;
-        int dark = 0xFF101016;
-        graphics.fill(rx, ry, rx + 1, ry + rh, light);
-        graphics.fill(rx + 1, ry, rx + rw, ry + 1, light);
-        graphics.fill(rx + rw - 1, ry + 1, rx + rw, ry + rh, dark);
-        graphics.fill(rx + 1, ry + rh - 1, rx + rw - 1, ry + rh, dark);
-        graphics.fill(rx + 1, ry + 1, rx + rw - 1, ry + rh - 1, main);
+        graphics.fill(rx, ry, rx + 1, ry + rh, 0xff08080E);          // Left
+        graphics.fill(rx + 1, ry, rx + rw, ry + 1, 0xff08080E);      // Top
+        graphics.fill(rx + rw - 1, ry + 1, rx + rw, ry + rh, 0xff28282E); // Right
+        graphics.fill(rx + 1, ry + rh - 1, rx + rw - 1, ry + rh, 0xff28282E); // Bottom
+        graphics.fill(rx + 1, ry + 1, rx + rw - 1, ry + rh - 1, 0x6008080E); // Fill
     }
 
     private void drawScrollbar(GuiGraphics graphics) {
@@ -127,9 +130,9 @@ public class ScrollableListWidget {
 
         int trackX1 = x + width - SCROLLBAR_W;
         int trackX2 = x + width;
-        int trackY1 = y + 2;
-        int trackY2 = y + height - 2;
-        graphics.fill(trackX1, trackY1, trackX2, trackY2, 0xFF101010);
+        int trackY1 = y + 5;
+        int trackY2 = y + height - 5;
+        graphics.fill(trackX1, trackY1, trackX2, trackY2, 0xff101010);
 
         float barSize = Math.min(1f, (float) height / contentHeight);
         int trackHeight = trackY2 - trackY1;
@@ -137,7 +140,7 @@ public class ScrollableListWidget {
         float scrollRatio = max == 0 ? 0 : scroll / max;
         int thumbY = trackY1 + Math.round((trackHeight - thumbH) * scrollRatio);
 
-        graphics.fill(trackX1 + 1, thumbY, trackX2 - 1, thumbY + thumbH, 0xFF303030);
+        graphics.fill(trackX1 + 1, thumbY, trackX2 - 1, thumbY + thumbH, 0xff303030);
     }
 
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollY) {
@@ -172,7 +175,7 @@ public class ScrollableListWidget {
         for (Setting<?> setting : category.getSettings()) {
             int rowHeight = setting.getHeight();
             if (mouseY >= cursorY && mouseY <= cursorY + rowHeight) {
-                return setting.mouseClicked(mouseX, mouseY, button, x + 8, cursorY + 4, width - 16);
+                return setting.mouseClicked(mouseX, mouseY, button, x + 10, cursorY, width - 20);
             }
             cursorY += rowHeight + ROW_GAP;
         }
@@ -210,8 +213,8 @@ public class ScrollableListWidget {
     }
 
     private void scrollToThumbPosition(double mouseY) {
-        int trackY1 = y + 2;
-        int trackY2 = y + height - 2;
+        int trackY1 = y + 5;
+        int trackY2 = y + height - 5;
         float p = (float) (mouseY - trackY1) / (trackY2 - trackY1);
         scroll = clamp(p * maxScroll());
         targetScroll = scroll;

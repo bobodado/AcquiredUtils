@@ -7,13 +7,13 @@ import java.util.function.Consumer;
 
 /**
  * Base class for every registrable config entry.
- * <p>
+ *
  * This is the "one-line registration" backend the whole GUI is built around.
  * A concrete subclass (e.g. {@link com.acquiredutils.client.config.widget.BooleanSettingWidget})
  * knows how to render itself and handle its own input; {@link ScrollableListWidget}
  * never needs to know what kind of setting it's looking at - it just calls
  * {@link #render}, {@link #mouseClicked}, etc. and stacks them vertically.
- * <p>
+ *
  * Row chrome (the dark floating panel background, per-row) is drawn by
  * {@link ScrollableListWidget}, matching how NEU's {@code GuiOptionEditor}
  * base class drew a shared "floating rect" behind every option type.
@@ -58,7 +58,7 @@ public abstract class Setting<T> {
      * we keep that as the default but let sliders/complex widgets override it.
      */
     public int getHeight() {
-        return 40;
+        return 45;
     }
 
     /**
