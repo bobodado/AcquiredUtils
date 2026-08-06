@@ -6,10 +6,6 @@ import net.minecraft.client.gui.GuiGraphics;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * NEU-style accordion section. Renders a header row with a ▶/▼ arrow.
- * When expanded, child settings ("baby features") are rendered below indented.
- */
 public class Section implements GuiElement {
 
     private static final int HEADER_H = 24;
@@ -20,60 +16,34 @@ public class Section implements GuiElement {
     private boolean expanded = false;
     private final List<Setting<?>> children = new ArrayList<>();
 
-    public Section(String name) {
-        this.name = name;
-    }
+    public Section(String name) { this.name = name; }
+    public Section(String name, boolean expanded) { this.name = name; this.expanded = expanded; }
 
-    public Section(String name, boolean expanded) {
-        this.name = name;
-        this.expanded = expanded;
-    }
-
-    public void addChild(Setting<?> child) {
-        children.add(child);
-    }
-
-    public List<Setting<?>> getChildren() {
-        return children;
-    }
-
-    public boolean isExpanded() {
-        return expanded;
-    }
-
-    public void setExpanded(boolean expanded) {
-        this.expanded = expanded;
-    }
+    public void addChild(Setting<?> child) { children.add(child); }
+    public List<Setting<?>> getChildren() { return children; }
+    public boolean isExpanded() { return expanded; }
+    public void setExpanded(boolean expanded) { this.expanded = expanded; }
 
     @Override
     public int getHeight() {
         int h = HEADER_H;
         if (expanded) {
-            for (Setting<?> child : children) {
-                h += child.getHeight() + ROW_GAP;
-            }
+            for (Setting<?> child : children) h += child.getHeight() + ROW_GAP;
         }
         return h;
     }
 
     @Override
     public void render(GuiGraphics g, Font font, int x, int y, int width, int mouseX, int mouseY, float partialTick) {
-        // Header background - slightly different chrome from regular rows
         drawSectionChrome(g, x, y, width, HEADER_H, mouseX, mouseY);
-
-        // Arrow
-        String arrow = expanded ? "\u25BC" : "\u25B6"; // ▼ or ▶
+        String arrow = expanded ? "\u25BC" : "\u25B6";
         g.drawString(font, arrow, x + 8, y + HEADER_H / 2 - font.lineHeight / 2, 0xFFa0a0a0, false);
-
-        // Section name
         g.drawString(font, name, x + 22, y + HEADER_H / 2 - font.lineHeight / 2, 0xFFc0c0c0, false);
 
-        // Render children if expanded
         if (expanded) {
             int childY = y + HEADER_H;
             for (Setting<?> child : children) {
                 int ch = child.getHeight();
-                // Child row chrome (indented)
                 drawChildChrome(g, x + CHILD_INDENT, childY, width - CHILD_INDENT, ch);
                 child.render(g, font, x + CHILD_INDENT + 10, childY, width - CHILD_INDENT - 20, mouseX, mouseY, partialTick);
                 childY += ch + ROW_GAP;
@@ -82,16 +52,20 @@ public class Section implements GuiElement {
     }
 
     @Override
+    public void renderOverlay(GuiGraphics g, Font font, int x, int y, int width, int mouseX, int mouseY, float partialTick) {
+        if (!expanded) return;
+        int childY = y + HEADER_H;
+        for (Setting<?> child : children) {
+            int ch = child.getHeight();
+            child.renderOverlay(g, font, x + CHILD_INDENT + 10, childY, width - CHILD_INDENT - 20, mouseX, mouseY, partialTick);
+            childY += ch + ROW_GAP;
+        }
+    }
+
+    @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button, int x, int y, int width) {
         if (button != 0) return false;
-
-        // Click on header toggles expand/collapse
-        if (mouseY >= y && mouseY <= y + HEADER_H) {
-            expanded = !expanded;
-            return true;
-        }
-
-        // Delegate to children if expanded
+        if (mouseY >= y && mouseY <= y + HEADER_H) { expanded = !expanded; return true; }
         if (expanded) {
             int childY = y + HEADER_H;
             for (Setting<?> child : children) {

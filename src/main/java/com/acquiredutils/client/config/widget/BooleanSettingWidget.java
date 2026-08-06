@@ -8,31 +8,36 @@ import net.minecraft.network.chat.Component;
 import java.util.function.Consumer;
 
 /**
- * NEU-style small square boolean button (like the green/orange squares
- * shown in the reference screenshot). Replaces the pill toggle.
- *
- * 14x14 square, positioned to the left of the name in the left column.
- * ON  = filled with accent colour + subtle inner highlight
- * OFF = dark grey with border
+ * NEU-style small square boolean button.
+ * 14x14 square, positioned to the left of the name.
  */
 public class BooleanSettingWidget extends Setting<Boolean> {
 
     private static final int BTN_SIZE = 14;
     private static final int CLICK_RADIUS = 6;
-
-    private static final int COLOR_OFF_BG   = 0xFF2A2A32;
+    private static final int COLOR_OFF_BG = 0xFF2A2A32;
     private static final int COLOR_OFF_BORDER = 0xFF404046;
-    private static final int COLOR_ON_BG    = 0xFFA368EF;
+    private static final int COLOR_ON_BG = 0xFFA368EF;
     private static final int COLOR_ON_BORDER = 0xFFC090FF;
-    private static final int COLOR_INNER      = 0xFFE8E8EC;
+    private static final int COLOR_INNER = 0xFFE8E8EC;
 
     private boolean previewValue;
     private long animStart = 0;
     private boolean mouseWasDown = false;
+    private int lastBtnX = 0, lastBtnY = 0;
 
     public BooleanSettingWidget(String name, String description, boolean defaultValue, Consumer<Boolean> onChange) {
         super(name, description, defaultValue, onChange);
         this.previewValue = defaultValue;
+    }
+
+    @Override
+    public boolean isHovered(int mouseX, int mouseY, int x, int y, int width) {
+        int btnX = x + 10;
+        int btnY = y + getHeight() / 2 - BTN_SIZE / 2;
+        lastBtnX = btnX; lastBtnY = btnY;
+        return mouseX >= btnX - CLICK_RADIUS && mouseX <= btnX + BTN_SIZE + CLICK_RADIUS &&
+               mouseY >= btnY - CLICK_RADIUS && mouseY <= btnY + BTN_SIZE + CLICK_RADIUS;
     }
 
     @Override
@@ -45,33 +50,31 @@ public class BooleanSettingWidget extends Setting<Boolean> {
             if (t >= 1f) animStart = 0;
         }
 
-        // ── Name: left column, beside the square button ──
-        int nameX = x + 10 + BTN_SIZE + 8;
+        int btnX = x + 10;
+        int btnY = y + getHeight() / 2 - BTN_SIZE / 2;
+        lastBtnX = btnX; lastBtnY = btnY;
+
+        // Name
+        int nameX = btnX + BTN_SIZE + 8;
         g.drawString(font, name, nameX, y + getHeight() / 2 - font.lineHeight / 2, 0xFFc0c0c0, false);
 
-        // ── Description: right 2/3, vertically centred ──
+        // Description
         int descX = x + 5 + width / 3;
         int descW = width * 2 / 3 - 10;
         int lineCount = font.split(Component.literal(description), descW).size();
         int paraH = font.lineHeight * lineCount;
         g.drawWordWrap(font, Component.literal(description), descX, y + getHeight() / 2 - paraH / 2, descW, 0xFFc0c0c0);
 
-        // ── Square button: left side, vertically centred ──
-        int btnX = x + 10;
-        int btnY = y + getHeight() / 2 - BTN_SIZE / 2;
-
+        // Square button
         int bg = current ? lerpColor(COLOR_OFF_BG, COLOR_ON_BG, t) : lerpColor(COLOR_ON_BG, COLOR_OFF_BG, t);
         int border = current ? lerpColor(COLOR_OFF_BORDER, COLOR_ON_BORDER, t) : lerpColor(COLOR_ON_BORDER, COLOR_OFF_BORDER, t);
 
-        // Border
         g.fill(btnX - 1, btnY - 1, btnX + BTN_SIZE + 1, btnY, border);
         g.fill(btnX - 1, btnY + BTN_SIZE, btnX + BTN_SIZE + 1, btnY + BTN_SIZE + 1, border);
         g.fill(btnX - 1, btnY, btnX, btnY + BTN_SIZE, border);
         g.fill(btnX + BTN_SIZE, btnY, btnX + BTN_SIZE + 1, btnY + BTN_SIZE, border);
-        // Fill
         g.fill(btnX, btnY, btnX + BTN_SIZE, btnY + BTN_SIZE, bg);
 
-        // Inner highlight dot when ON
         if (current || t > 0) {
             int innerAlpha = current ? Math.round(255 * t) : Math.round(255 * (1f - t));
             if (innerAlpha > 0) {
@@ -103,9 +106,7 @@ public class BooleanSettingWidget extends Setting<Boolean> {
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         if (button != 0 || !mouseWasDown) return false;
         mouseWasDown = false;
-        if (previewValue != value) {
-            updateValue(previewValue);
-        }
+        if (previewValue != value) updateValue(previewValue);
         return true;
     }
 
@@ -116,8 +117,5 @@ public class BooleanSettingWidget extends Setting<Boolean> {
         int b = lerpChannel(from & 0xFF, to & 0xFF, t);
         return (a << 24) | (r << 16) | (g << 8) | b;
     }
-
-    private static int lerpChannel(int from, int to, float t) {
-        return from + Math.round((to - from) * t);
-    }
+    private static int lerpChannel(int from, int to, float t) { return from + Math.round((to - from) * t); }
 }

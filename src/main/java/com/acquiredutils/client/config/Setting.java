@@ -31,6 +31,43 @@ public abstract class Setting<T> implements GuiElement {
     @Override
     public int getHeight() { return 45; }
 
+    /** Returns true if the mouse is currently hovering over this setting's interactive area. */
+    public abstract boolean isHovered(int mouseX, int mouseY, int x, int y, int width);
+
+    @Override
+    public void renderOverlay(GuiGraphics graphics, Font font, int x, int y, int width, int mouseX, int mouseY, float partialTick) {
+        if (isHovered(mouseX, mouseY, x, y, width) && !description.isEmpty()) {
+            drawTooltip(graphics, font, mouseX, mouseY, description);
+        }
+    }
+
+    protected void drawTooltip(GuiGraphics graphics, Font font, int mouseX, int mouseY, String text) {
+        int pad = 4;
+        int maxW = 200;
+        var lines = font.split(net.minecraft.network.chat.Component.literal(text), maxW);
+        int lineH = font.lineHeight;
+        int tw = 0;
+        for (var line : lines) {
+            tw = Math.max(tw, font.width(line));
+        }
+        int th = lines.size() * lineH;
+        int tx = mouseX + 12;
+        int ty = mouseY - th - 8;
+
+        // Keep on screen
+        if (tx + tw + pad * 2 > graphics.guiWidth()) tx = mouseX - tw - pad * 2 - 8;
+        if (ty < 0) ty = mouseY + 12;
+
+        graphics.fill(tx - pad, ty - pad, tx + tw + pad, ty + th + pad, 0xF0101010);
+        graphics.fill(tx - pad, ty - pad, tx + tw + pad, ty - pad + 1, 0xFFa368ef);
+
+        int cy = ty;
+        for (var line : lines) {
+            graphics.drawString(font, line, tx, cy, 0xFFe0e0e0, false);
+            cy += lineH;
+        }
+    }
+
     @Override
     public abstract void render(GuiGraphics graphics, Font font, int x, int y, int width, int mouseX, int mouseY, float partialTick);
 
