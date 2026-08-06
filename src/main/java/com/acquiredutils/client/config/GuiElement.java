@@ -1,19 +1,21 @@
 package com.acquiredutils.client.config;
 
-import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 
+/**
+ * Interface for all GUI elements in the config system.
+ * Every element must handle its own rendering, input, and focus state.
+ */
 public interface GuiElement {
+    void render(GuiGraphics graphics, int x, int y, int width, int mouseX, int mouseY, float delta);
+    boolean mouseClicked(double mouseX, double mouseY, int button);
+    boolean mouseReleased(double mouseX, double mouseY, int button);
+    boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY);
+    boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount);
+    boolean keyPressed(int keyCode, int scanCode, int modifiers);
+    boolean charTyped(char chr, int modifiers);
+    void setFocused(boolean focused);
+    boolean isFocused();
     int getHeight();
-    void render(GuiGraphics graphics, Font font, int x, int y, int width, int mouseX, int mouseY, float partialTick);
-
-    /** 
-     * Called AFTER the scissor is disabled so tooltips/dropdowns draw on top.
-     * Return true if something was drawn that needs to stay on top.
-     */
-    default void renderOverlay(GuiGraphics graphics, Font font, int x, int y, int width, int mouseX, int mouseY, float partialTick) {}
-
-    boolean mouseClicked(double mouseX, double mouseY, int button, int x, int y, int width);
-    default boolean mouseReleased(double mouseX, double mouseY, int button) { return false; }
-    default boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) { return false; }
+    void renderOverlay(GuiGraphics graphics, int mouseX, int mouseY, float delta);
 }

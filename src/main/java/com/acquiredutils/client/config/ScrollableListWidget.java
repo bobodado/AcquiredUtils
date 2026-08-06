@@ -1,177 +1,227 @@
 package com.acquiredutils.client.config;
 
-import net.minecraft.client.gui.Font;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.Font;
 
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Scrollable list widget that renders GuiElements with scissor, scrollbar, and search filtering.
+ * Performs a two-pass render: main content, then overlay (tooltips) after scissor is disabled.
+ */
 public class ScrollableListWidget {
-
-    private static final int ROW_GAP = 5;
-    private static final int SCROLLBAR_W = 5;
-    private static final int WHEEL_STEP = 30;
-
-    private int x, y, width, height;
-    private float scroll = 0f;
-    private float targetScroll = 0f;
-    private int contentHeight = 0;
-    private boolean draggingScrollbar = false;
-    private ConfigCategory category;
+    private final Minecraft mc;
+    private final List<GuiElement> elements = new ArrayList<>();
     private String searchQuery = "";
+    private double scrollOffset = 0;
+    private int x, y, width, height;
+    private static final int SCROLLBAR_WIDTH = 4;
+    private static final int SCROLLBAR_BG = 0xFF18181C;
+    private static final int SCROLLBAR_COLOR = 0xFF606068;
+    private static final int SCROLLBAR_HOVER = 0xFF808088;
 
-    public void setBounds(int x, int y, int width, int height) {
-        this.x = x; this.y = y; this.width = width; this.height = height;
+    public ScrollableListWidget(Minecraft mc) {
+        this.mc = mc;
     }
 
+    /** No-arg constructor for compatibility with existing code. */
+    public ScrollableListWidget() {
+        this(Minecraft.getInstance());
+    }
+
+    public void setBounds(int x, int y, int width, int height) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+    }
+
+    public void setElements(List<GuiElement> elements) {
+        this.elements.clear();
+        this.elements.addAll(elements);
+    }
+
+    /** Convenience method for compatibility with code that passes a category directly. */
     public void setCategory(ConfigCategory category) {
-        if (this.category != category) {
-            this.category = category;
-            this.scroll = 0f; this.targetScroll = 0f;
+        if (category != null) {
+            setElements(new ArrayList<>(category.getElements()));
         }
     }
 
     public void setSearchQuery(String query) {
         this.searchQuery = query == null ? "" : query.toLowerCase();
-        this.scroll = 0f; this.targetScroll = 0f;
+        this.scrollOffset = 0;
     }
 
-    private List<GuiElement> getVisibleElements() {
-        if (category == null) return List.of();
-        if (searchQuery.isEmpty()) return category.getElements();
-        List<GuiElement> filtered = new ArrayList<>();
-        for (GuiElement e : category.getElements()) {
-            if (e instanceof Setting<?> s) {
-                if (matches(s.getName(), s.getDescription())) filtered.add(e);
-            } else if (e instanceof Section sec) {
-                List<Setting<?>> matched = new ArrayList<>();
-                for (Setting<?> child : sec.getChildren()) {
-                    if (matches(child.getName(), child.getDescription())) matched.add(child);
+    /**
+     * Returns visible elements based on search filtering.
+     * Sections are included if they match or have matching children.
+     * Settings are included if they match.
+     */
+    public List<GuiElement> getVisibleElements() {
+        List<GuiElement> visible = new ArrayList<>();
+        if (searchQuery.isEmpty()) {
+            visible.addAll(elements);
+            return visible;
+        }
+        for (GuiElement element : elements) {
+            if (element instanceof Section section) {
+                if (section.matchesSearch(searchQuery)) {
+                    visible.add(section);
                 }
-                if (!matched.isEmpty()) {
-                    Section fs = new Section(sec.name, true);
-                    for (Setting<?> m : matched) fs.addChild(m);
-                    filtered.add(fs);
+            } else if (element instanceof Setting<?> setting) {
+                if (setting.matchesSearch(searchQuery)) {
+                    visible.add(setting);
                 }
             }
         }
-        return filtered;
+        return visible;
     }
 
-    private boolean matches(String name, String desc) {
-        return name.toLowerCase().contains(searchQuery) || desc.toLowerCase().contains(searchQuery);
-    }
-
-    private int maxScroll() { return Math.max(0, contentHeight - height); }
-
-    private void tickScroll(float partialTick) {
-        if (Math.abs(targetScroll - scroll) < 0.5f) scroll = targetScroll;
-        else scroll += (targetScroll - scroll) * Math.min(1f, 0.35f * Math.max(partialTick, 1f));
-    }
-
-    public void render(GuiGraphics graphics, Font font, int mouseX, int mouseY, float partialTick) {
-        tickScroll(partialTick);
-        List<GuiElement> elements = getVisibleElements();
-
-        if (elements.isEmpty()) {
-            String msg = searchQuery.isEmpty() ? "No settings in this category" : "No matches found";
-            graphics.drawCenteredString(font, msg, x + width / 2, y + height / 2 - 4, 0xFF808080);
-            contentHeight = 0; return;
+    private int getTotalContentHeight() {
+        int h = 0;
+        for (GuiElement element : getVisibleElements()) {
+            h += element.getHeight();
         }
+        return h;
+    }
 
+    private double getMaxScroll() {
+        int total = getTotalContentHeight();
+        return Math.max(0, total - height);
+    }
+
+    public void scroll(double amount) {
+        scrollOffset = Math.max(0, Math.min(getMaxScroll(), scrollOffset - amount * 20));
+    }
+
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+        List<GuiElement> visible = getVisibleElements();
+        int totalHeight = getTotalContentHeight();
+        double maxScroll = getMaxScroll();
+
+        // Clamp scroll
+        if (scrollOffset > maxScroll) scrollOffset = maxScroll;
+        if (scrollOffset < 0) scrollOffset = 0;
+
+        // Scissor
         graphics.enableScissor(x, y, x + width, y + height);
 
-        int cursorY = y - (int) scroll;
-        for (GuiElement element : elements) {
+        int renderY = y - (int) scrollOffset;
+        for (GuiElement element : visible) {
             int elemHeight = element.getHeight();
-            if (cursorY + elemHeight >= y && cursorY <= y + height) {
-                if (!(element instanceof Section)) drawRowChrome(graphics, x, cursorY, width, elemHeight);
-                element.render(graphics, font, x + 10, cursorY, width - 20, mouseX, mouseY, partialTick);
+            if (renderY + elemHeight >= y && renderY <= y + height) {
+                element.render(graphics, x, renderY, width - SCROLLBAR_WIDTH - 2, mouseX, mouseY, delta);
             }
-            cursorY += elemHeight + ROW_GAP;
+            renderY += elemHeight;
         }
 
         graphics.disableScissor();
 
-        // Overlay pass - tooltips draw above scissor
-        cursorY = y - (int) scroll;
-        for (GuiElement element : elements) {
+        // Scrollbar
+        if (totalHeight > height) {
+            int scrollbarHeight = Math.max(20, (int) ((double) height / totalHeight * height));
+            int scrollbarY = y + (int) ((scrollOffset / maxScroll) * (height - scrollbarHeight));
+            int scrollbarX = x + width - SCROLLBAR_WIDTH;
+
+            boolean hovered = mouseX >= scrollbarX && mouseX <= scrollbarX + SCROLLBAR_WIDTH
+                && mouseY >= scrollbarY && mouseY <= scrollbarY + scrollbarHeight;
+
+            graphics.fill(scrollbarX, y, scrollbarX + SCROLLBAR_WIDTH, y + height, SCROLLBAR_BG);
+            graphics.fill(scrollbarX, scrollbarY, scrollbarX + SCROLLBAR_WIDTH, scrollbarY + scrollbarHeight,
+                hovered ? SCROLLBAR_HOVER : SCROLLBAR_COLOR);
+        }
+    }
+
+    /** Compatibility overload for code that passes Font as a parameter. */
+    public void render(GuiGraphics graphics, Font font, int mouseX, int mouseY, float delta) {
+        render(graphics, mouseX, mouseY, delta);
+    }
+
+    /**
+     * Second pass: render overlays (tooltips) after scissor is disabled.
+     */
+    public void renderOverlay(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+        List<GuiElement> visible = getVisibleElements();
+        int renderY = y - (int) scrollOffset;
+        for (GuiElement element : visible) {
             int elemHeight = element.getHeight();
-            if (cursorY + elemHeight >= y && cursorY <= y + height) {
-                element.renderOverlay(graphics, font, x + 10, cursorY, width - 20, mouseX, mouseY, partialTick);
+            if (renderY + elemHeight >= y && renderY <= y + height) {
+                element.renderOverlay(graphics, mouseX, mouseY, delta);
             }
-            cursorY += elemHeight + ROW_GAP;
+            renderY += elemHeight;
         }
-
-        contentHeight = (cursorY + (int) scroll) - y - ROW_GAP;
-        if (targetScroll > maxScroll()) targetScroll = maxScroll();
-
-        drawScrollbar(graphics);
     }
 
-    private void drawRowChrome(GuiGraphics g, int rx, int ry, int rw, int rh) {
-        g.fill(rx, ry, rx + 1, ry + rh, 0xFF08080E);
-        g.fill(rx + 1, ry, rx + rw, ry + 1, 0xFF08080E);
-        g.fill(rx + rw - 1, ry + 1, rx + rw, ry + rh, 0xFF28282E);
-        g.fill(rx + 1, ry + rh - 1, rx + rw - 1, ry + rh, 0xFF28282E);
-        g.fill(rx + 1, ry + 1, rx + rw - 1, ry + rh - 1, 0x6008080E);
-    }
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (mouseX < x || mouseX > x + width || mouseY < y || mouseY > y + height) return false;
 
-    private void drawScrollbar(GuiGraphics g) {
-        int max = maxScroll(); if (max <= 0) return;
-        int tx1 = x + width - SCROLLBAR_W, tx2 = x + width, ty1 = y + 5, ty2 = y + height - 5;
-        g.fill(tx1, ty1, tx2, ty2, 0xFF101010);
-        float barSize = Math.min(1f, (float) height / contentHeight);
-        int th = Math.max(10, Math.round((ty2 - ty1) * barSize));
-        float ratio = max == 0 ? 0 : scroll / max;
-        int thumbY = ty1 + Math.round((ty2 - ty1 - th) * ratio);
-        g.fill(tx1 + 1, thumbY, tx2 - 1, thumbY + th, 0xFF303030);
-    }
-
-    public boolean mouseScrolled(double mx, double my, double sy) {
-        if (!isInside(mx, my)) return false;
-        int notch = sy > 0 ? -1 : (sy < 0 ? 1 : 0);
-        targetScroll = clamp(targetScroll + notch * WHEEL_STEP); return true;
-    }
-
-    private float clamp(float v) { return Math.max(0, Math.min(maxScroll(), v)); }
-    private boolean isInside(double mx, double my) { return mx >= x && mx <= x + width && my >= y && my <= y + height; }
-
-    public boolean mouseClicked(double mx, double my, int btn) {
-        if (category == null) return false;
-        if (maxScroll() > 0 && mx >= x + width - SCROLLBAR_W && mx <= x + width) {
-            draggingScrollbar = true; scrollToThumbPosition(my); return true;
-        }
-        if (!isInside(mx, my)) return false;
-        int cursorY = y - (int) scroll;
-        for (GuiElement e : getVisibleElements()) {
-            int eh = e.getHeight();
-            if (my >= cursorY && my <= cursorY + eh) return e.mouseClicked(mx, my, btn, x + 10, cursorY, width - 20);
-            cursorY += eh + ROW_GAP;
+        List<GuiElement> visible = getVisibleElements();
+        int renderY = y - (int) scrollOffset;
+        for (GuiElement element : visible) {
+            int elemHeight = element.getHeight();
+            if (mouseY >= renderY && mouseY < renderY + elemHeight) {
+                if (element.mouseClicked(mouseX, mouseY, button)) {
+                    return true;
+                }
+            }
+            renderY += elemHeight;
         }
         return false;
     }
 
-    public boolean mouseDragged(double mx, double my, int btn, double dx, double dy) {
-        if (draggingScrollbar) { scrollToThumbPosition(my); return true; }
-        if (category == null) return false;
-        for (GuiElement e : getVisibleElements()) {
-            if (e.mouseDragged(mx, my, btn, dx, dy)) return true;
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (mouseX < x || mouseX > x + width || mouseY < y || mouseY > y + height) return false;
+
+        List<GuiElement> visible = getVisibleElements();
+        int renderY = y - (int) scrollOffset;
+        for (GuiElement element : visible) {
+            int elemHeight = element.getHeight();
+            if (mouseY >= renderY && mouseY < renderY + elemHeight) {
+                if (element.mouseReleased(mouseX, mouseY, button)) {
+                    return true;
+                }
+            }
+            renderY += elemHeight;
         }
         return false;
     }
 
-    public boolean mouseReleased(double mx, double my, int btn) {
-        boolean was = draggingScrollbar; draggingScrollbar = false;
-        if (category != null) {
-            for (GuiElement e : getVisibleElements()) e.mouseReleased(mx, my, btn);
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
+        if (mouseX < x || mouseX > x + width || mouseY < y || mouseY > y + height) return false;
+
+        List<GuiElement> visible = getVisibleElements();
+        int renderY = y - (int) scrollOffset;
+        for (GuiElement element : visible) {
+            int elemHeight = element.getHeight();
+            if (mouseY >= renderY && mouseY < renderY + elemHeight) {
+                if (element.mouseDragged(mouseX, mouseY, button, deltaX, deltaY)) {
+                    return true;
+                }
+            }
+            renderY += elemHeight;
         }
-        return was;
+        return false;
     }
 
-    private void scrollToThumbPosition(double my) {
-        int ty1 = y + 5, ty2 = y + height - 5;
-        float p = (float) (my - ty1) / (ty2 - ty1);
-        scroll = clamp(p * maxScroll()); targetScroll = scroll;
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        if (mouseX < x || mouseX > x + width || mouseY < y || mouseY > y + height) return false;
+        scroll(verticalAmount);
+        return true;
+    }
+
+    /** Compatibility overload for code that passes only 3 doubles. */
+    public boolean mouseScrolled(double mouseX, double mouseY, double verticalAmount) {
+        return mouseScrolled(mouseX, mouseY, 0, verticalAmount);
+    }
+
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        return false;
+    }
+
+    public boolean charTyped(char chr, int modifiers) {
+        return false;
     }
 }

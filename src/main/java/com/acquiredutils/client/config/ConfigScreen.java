@@ -2,226 +2,303 @@ package com.acquiredutils.client.config;
 
 import com.acquiredutils.client.config.widget.BooleanSettingWidget;
 import com.acquiredutils.client.config.widget.SliderSettingWidget;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.network.chat.Component;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.function.Consumer;
 
 /**
- * NEU-style config screen with search bar, keyboard navigation, tooltips, and opening animation.
+ * Main config screen with tabs, search bar, keyboard navigation, and opening animation.
+ * Uses Fabric 1.21.11 event-object input signatures (MouseButtonEvent, KeyEvent, CharacterEvent).
  */
 public class ConfigScreen extends Screen {
+    private final Screen parent;
+    private final List<ConfigCategory> categories;
+    private final Consumer<ConfigCategory> saveCallback;
 
-    private static final int TAB_W = 110;
-    private static final int TAB_H = 20;
-    private static final int CONTENT_PAD = 10;
-
-    private final Map<String, ConfigCategory> categories = new LinkedHashMap<>();
-    private final List<String> categoryNames = new ArrayList<>();
-    private String activeCategory = null;
-
-    private final ScrollableListWidget listWidget = new ScrollableListWidget();
+    private ScrollableListWidget scrollableList;
     private EditBox searchBox;
-    private boolean searching = false;
+    private int selectedTab = 0;
+    private long openTime;
+    private static final long ANIMATION_DURATION = 300; // ms
 
-    // Opening animation
-    private long openTime = 0;
-    private static final long OPEN_ANIM_MS = 300;
+    // Layout constants
+    private static final int TAB_HEIGHT = 24;
+    private static final int SEARCH_WIDTH = 140;
+    private static final int SEARCH_HEIGHT = 18;
+    private static final int PANEL_MARGIN = 16;
+    private static final int PANEL_TOP_MARGIN = 40;
 
-    public ConfigScreen() {
+    // Colors
+    private static final int BG_COLOR = 0xFF121216;
+    private static final int PANEL_BG = 0xFF1A1A1E;
+    private static final int TAB_INACTIVE = 0xFF2A2A32;
+    private static final int TAB_ACTIVE = 0xFFA368EF;
+    private static final int TAB_TEXT = 0xFFE8E8EC;
+    private static final int SEARCH_BG = 0xFF242428;
+    private static final int SEARCH_BORDER = 0xFF404046;
+    private static final int SEARCH_TEXT = 0xFFE8E8EC;
+
+    public ConfigScreen(Screen parent, List<ConfigCategory> categories, Consumer<ConfigCategory> saveCallback) {
         super(Component.literal("AcquiredUtils Config"));
-    }
-
-    public void addCategory(ConfigCategory category) {
-        categories.put(category.getName(), category);
-        categoryNames.add(category.getName());
-        if (activeCategory == null) activeCategory = category.getName();
+        this.parent = parent;
+        this.categories = categories;
+        this.saveCallback = saveCallback;
+        this.openTime = System.currentTimeMillis();
     }
 
     @Override
     protected void init() {
         super.init();
-        openTime = System.currentTimeMillis();
 
-        int contentX = TAB_W + CONTENT_PAD * 2;
-        int contentY = 40;
-        int contentW = this.width - contentX - CONTENT_PAD;
-        int contentH = this.height - contentY - CONTENT_PAD;
+        int panelX = PANEL_MARGIN;
+        int panelY = PANEL_TOP_MARGIN;
+        int panelWidth = this.width - PANEL_MARGIN * 2;
+        int panelHeight = this.height - panelY - PANEL_MARGIN;
 
-        listWidget.setBounds(contentX, contentY, contentW, contentH);
-        if (activeCategory != null) listWidget.setCategory(categories.get(activeCategory));
+        // Scrollable list
+        scrollableList = new ScrollableListWidget(this.minecraft);
+        scrollableList.setBounds(panelX, panelY, panelWidth, panelHeight);
+        refreshListElements();
 
-        // Search box - top right of content area
-        int searchW = 140;
-        searchBox = new EditBox(this.font, this.width - CONTENT_PAD - searchW, 18, searchW, 16, Component.literal("Search..."));
-        searchBox.setMaxLength(50);
-        searchBox.setResponder(this::onSearchChanged);
-        searchBox.setTextColor(0xFFc0c0c0);
-        searchBox.setBordered(false);
+        // Search box (top-right)
+        int searchX = this.width - PANEL_MARGIN - SEARCH_WIDTH;
+        int searchY = 10;
+        searchBox = new EditBox(this.minecraft.font, searchX, searchY, SEARCH_WIDTH, SEARCH_HEIGHT,
+            Component.literal("Search..."));
+        searchBox.setMaxLength(64);
+        searchBox.setResponder(query -> {
+            if (scrollableList != null) {
+                scrollableList.setSearchQuery(query);
+            }
+        });
+        searchBox.setTextColor(SEARCH_TEXT);
+        searchBox.setBordered(true);
         this.addRenderableWidget(searchBox);
     }
 
-    private void onSearchChanged(String query) {
-        listWidget.setSearchQuery(query);
-        searching = !query.isEmpty();
+    private void refreshListElements() {
+        if (categories.isEmpty() || scrollableList == null) return;
+        ConfigCategory category = categories.get(selectedTab);
+        List<GuiElement> elements = new ArrayList<>(category.getElements());
+        scrollableList.setElements(elements);
     }
 
-    private ConfigCategory activeCategory() {
-        return categories.get(activeCategory);
+    /**
+     * Sigmoid easing: 1 / (1 + e^(-6*(t-0.5)))
+     */
+    private float getPanelAlpha() {
+        long elapsed = System.currentTimeMillis() - openTime;
+        float t = Math.min(1.0f, elapsed / (float) ANIMATION_DURATION);
+        return 1.0f / (1.0f + (float) Math.exp(-6.0f * (t - 0.5f)));
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        // Opening animation alpha
-        long elapsed = System.currentTimeMillis() - openTime;
-        float openT = Math.min(1f, elapsed / (float) OPEN_ANIM_MS);
-        float openEased = sigmoid(openT * 2f - 1f) * 0.5f + 0.5f;
-        int bgAlpha = Math.round(0xCC * openEased);
-        int panelAlpha = Math.round(0xFF * openEased);
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+        float alpha = getPanelAlpha();
+        int alphaByte = Math.max(0, Math.min(255, (int) (alpha * 255)));
 
         // Background
-        this.renderBackground(graphics, mouseX, mouseY, partialTick);
-        graphics.fill(0, 0, this.width, this.height, (bgAlpha << 24));
+        this.renderBackground(graphics, mouseX, mouseY, delta);
 
-        // Main panel
-        int panelX = CONTENT_PAD;
-        int panelY = CONTENT_PAD;
-        int panelW = this.width - CONTENT_PAD * 2;
-        int panelH = this.height - CONTENT_PAD * 2;
-        drawPanel(graphics, panelX, panelY, panelW, panelH, panelAlpha);
+        // Panel background with alpha
+        int panelX = PANEL_MARGIN;
+        int panelY = PANEL_TOP_MARGIN;
+        int panelW = this.width - PANEL_MARGIN * 2;
+        int panelH = this.height - panelY - PANEL_MARGIN;
+        int panelBgWithAlpha = (alphaByte << 24) | (PANEL_BG & 0x00FFFFFF);
+        graphics.fill(panelX, panelY, panelX + panelW, panelY + panelH, panelBgWithAlpha);
 
-        // Title
-        graphics.drawCenteredString(this.font, this.title, this.width / 2, 22, 0xFFc0c0c0);
+        // Render tabs
+        renderTabs(graphics, mouseX, mouseY, alphaByte);
 
-        // Category tabs
-        int tabY = 45;
-        for (String name : categoryNames) {
-            boolean selected = name.equals(activeCategory);
-            int color = selected ? 0xFFa368ef : 0xFF808080;
-            if (mouseX >= CONTENT_PAD && mouseX <= CONTENT_PAD + TAB_W &&
-                mouseY >= tabY && mouseY <= tabY + TAB_H) {
-                color = selected ? 0xFFc090ff : 0xFFa0a0a0;
-            }
-            graphics.drawString(this.font, name, CONTENT_PAD + 8, tabY + 6, color, false);
-            if (selected) {
-                graphics.fill(CONTENT_PAD, tabY + TAB_H - 1, CONTENT_PAD + TAB_W, tabY + TAB_H, 0xFFa368ef);
-            }
-            tabY += TAB_H + 4;
+        // Render search box (EditBox handles its own rendering via addRenderableWidget)
+        super.render(graphics, mouseX, mouseY, delta);
+
+        // Render scrollable list
+        if (scrollableList != null) {
+            scrollableList.render(graphics, mouseX, mouseY, delta);
         }
 
-        // Divider
-        graphics.fill(TAB_W + CONTENT_PAD, 40, TAB_W + CONTENT_PAD + 1, panelY + panelH, 0xFF28282E);
-
-        // Active category description
-        if (activeCategory() != null && !activeCategory().getDescription().isEmpty() && !searching) {
-            graphics.drawWordWrap(this.font, Component.literal(activeCategory().getDescription()),
-                TAB_W + CONTENT_PAD * 2, 45, this.width - TAB_W - CONTENT_PAD * 3, 0xFF808080);
-        }
-
-        // Content list
-        listWidget.render(graphics, this.font, mouseX, mouseY, partialTick);
-
-        // Search hint
-        if (searchBox.getValue().isEmpty()) {
-            graphics.drawString(this.font, "Search...", searchBox.getX() + 4, searchBox.getY() + 4, 0xFF606060, false);
+        // Second pass: tooltips after scissor is disabled
+        if (scrollableList != null) {
+            scrollableList.renderOverlay(graphics, mouseX, mouseY, delta);
         }
     }
 
-    private void drawPanel(GuiGraphics g, int x, int y, int w, int h, int alpha) {
-        int edge = (alpha << 24) | 0x00202026;
-        int fill = (Math.round(alpha * 0.75f) << 24) | 0x0018181E;
-        g.fill(x, y, x + w, y + 1, edge);
-        g.fill(x, y + h - 1, x + w, y + h, edge);
-        g.fill(x, y + 1, x + 1, y + h - 1, edge);
-        g.fill(x + w - 1, y + 1, x + w, y + h - 1, edge);
-        g.fill(x + 1, y + 1, x + w - 1, y + h - 1, fill);
+    private void renderTabs(GuiGraphics graphics, int mouseX, int mouseY, int alphaByte) {
+        if (categories.size() <= 1) return;
+
+        int tabY = PANEL_TOP_MARGIN - TAB_HEIGHT;
+        int tabX = PANEL_MARGIN;
+        int tabSpacing = 4;
+
+        for (int i = 0; i < categories.size(); i++) {
+            ConfigCategory cat = categories.get(i);
+            int tabWidth = this.minecraft.font.width(cat.getName()) + 20;
+            boolean active = i == selectedTab;
+            boolean hovered = mouseX >= tabX && mouseX < tabX + tabWidth
+                && mouseY >= tabY && mouseY < tabY + TAB_HEIGHT;
+
+            int color = active ? TAB_ACTIVE : (hovered ? 0xFF505058 : TAB_INACTIVE);
+            color = (alphaByte << 24) | (color & 0x00FFFFFF);
+
+            graphics.fill(tabX, tabY, tabX + tabWidth, tabY + TAB_HEIGHT, color);
+            graphics.drawString(this.minecraft.font, cat.getName(),
+                tabX + 10, tabY + 7, TAB_TEXT, false);
+
+            tabX += tabWidth + tabSpacing;
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Input handlers — Fabric 1.21.11 event-object signatures.
+    // These deliberately do NOT use @Override because the supertype
+    // declares them via ContainerEventListener with event objects.
+    // ------------------------------------------------------------------
+
+    public boolean mouseClicked(MouseButtonEvent event, boolean isDoubleClick) {
+        double mouseX = event.getX();
+        double mouseY = event.getY();
+        int button = event.getButton();
+
+        // Check tab clicks
+        if (categories.size() > 1) {
+            int tabY = PANEL_TOP_MARGIN - TAB_HEIGHT;
+            int tabX = PANEL_MARGIN;
+            int tabSpacing = 4;
+            for (int i = 0; i < categories.size(); i++) {
+                ConfigCategory cat = categories.get(i);
+                int tabWidth = this.minecraft.font.width(cat.getName()) + 20;
+                if (mouseX >= tabX && mouseX < tabX + tabWidth
+                    && mouseY >= tabY && mouseY < tabY + TAB_HEIGHT) {
+                    selectedTab = i;
+                    refreshListElements();
+                    return true;
+                }
+                tabX += tabWidth + tabSpacing;
+            }
+        }
+
+        // Delegate to scrollable list
+        if (scrollableList != null && scrollableList.mouseClicked(mouseX, mouseY, button)) {
+            return true;
+        }
+
+        return super.mouseClicked(event, isDoubleClick);
+    }
+
+    public boolean mouseReleased(MouseButtonEvent event) {
+        double mouseX = event.getX();
+        double mouseY = event.getY();
+        int button = event.getButton();
+
+        if (scrollableList != null && scrollableList.mouseReleased(mouseX, mouseY, button)) {
+            return true;
+        }
+        return super.mouseReleased(event);
+    }
+
+    public boolean mouseDragged(MouseButtonEvent event, double deltaX, double deltaY) {
+        double mouseX = event.getX();
+        double mouseY = event.getY();
+        int button = event.getButton();
+
+        if (scrollableList != null && scrollableList.mouseDragged(mouseX, mouseY, button, deltaX, deltaY)) {
+            return true;
+        }
+        return super.mouseDragged(event, deltaX, deltaY);
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (super.mouseClicked(mouseX, mouseY, button)) return true;
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        if (scrollableList != null && scrollableList.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)) {
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
+    }
 
-        // Tab click
-        int tabY = 45;
-        for (String name : categoryNames) {
-            if (mouseX >= CONTENT_PAD && mouseX <= CONTENT_PAD + TAB_W &&
-                mouseY >= tabY && mouseY <= tabY + TAB_H) {
-                activeCategory = name;
-                listWidget.setCategory(categories.get(name));
-                listWidget.setSearchQuery(searchBox.getValue());
+    public boolean keyPressed(KeyEvent event) {
+        int keyCode = event.getKeyCode();
+        int scanCode = event.getScanCode();
+        int modifiers = event.getModifiers();
+
+        // Ctrl+F: focus search
+        if (keyCode == GLFW.GLFW_KEY_F && event.hasControlDown()) {
+            if (searchBox != null) {
+                this.setFocused(searchBox);
+                searchBox.setFocused(true);
+                searchBox.setHighlightPos(0);
+                searchBox.setCursorPosition(searchBox.getValue().length());
+            }
+            return true;
+        }
+
+        // ESC: save and close
+        if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+            saveAndClose();
+            return true;
+        }
+
+        // UP/DOWN: scroll list
+        if (scrollableList != null) {
+            if (keyCode == GLFW.GLFW_KEY_UP) {
+                scrollableList.scroll(1);
                 return true;
             }
-            tabY += TAB_H + 4;
+            if (keyCode == GLFW.GLFW_KEY_DOWN) {
+                scrollableList.scroll(-1);
+                return true;
+            }
         }
 
-        return listWidget.mouseClicked(mouseX, mouseY, button);
-    }
-
-    @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (super.mouseReleased(mouseX, mouseY, button)) return true;
-        return listWidget.mouseReleased(mouseX, mouseY, button);
-    }
-
-    @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
-        if (super.mouseDragged(mouseX, mouseY, button, dragX, dragY)) return true;
-        return listWidget.mouseDragged(mouseX, mouseY, button, dragX, dragY);
-    }
-
-    @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollY) {
-        if (listWidget.mouseScrolled(mouseX, mouseY, scrollY)) return true;
-        return super.mouseScrolled(mouseX, mouseY, scrollY);
-    }
-
-    @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        // ESC closes and saves
-        if (keyCode == 256) { // GLFW_KEY_ESCAPE
-            this.onClose();
-            return true;
+        if (searchBox != null && searchBox.isFocused()) {
+            if (searchBox.keyPressed(event)) {
+                return true;
+            }
         }
 
-        // UP/DOWN arrow navigation
-        if (keyCode == 265) { // GLFW_KEY_UP
-            listWidget.mouseScrolled(0, 0, 1);
-            return true;
-        }
-        if (keyCode == 264) { // GLFW_KEY_DOWN
-            listWidget.mouseScrolled(0, 0, -1);
-            return true;
-        }
-
-        // Focus search with Ctrl+F
-        if (keyCode == 33 && hasControlDown()) { // GLFW_KEY_F
-            this.setFocused(searchBox);
-            return true;
-        }
-
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(event);
     }
 
-    @Override
-    public boolean charTyped(char chr, int modifiers) {
-        return super.charTyped(chr, modifiers);
+    public boolean charTyped(CharacterEvent event) {
+        if (searchBox != null && searchBox.isFocused()) {
+            if (searchBox.charTyped(event)) {
+                return true;
+            }
+        }
+        return super.charTyped(event);
+    }
+
+    private void saveAndClose() {
+        // Commit all pending values
+        for (ConfigCategory cat : categories) {
+            for (Setting<?> setting : cat.getSettings()) {
+                setting.commit();
+            }
+            if (saveCallback != null) {
+                saveCallback.accept(cat);
+            }
+        }
+        this.minecraft.setScreen(parent);
     }
 
     @Override
     public void onClose() {
-        // TODO: trigger config save here if you have a ConfigManager
-        super.onClose();
+        saveAndClose();
     }
 
     @Override
-    public boolean isPauseScreen() { return false; }
-
-    private static float sigmoid(float t) {
-        return (float) (1.0 / (1.0 + Math.exp(-(t * 6.0))));
+    public boolean isPauseScreen() {
+        return false;
     }
 }
