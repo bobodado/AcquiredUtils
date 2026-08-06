@@ -2,102 +2,186 @@ package com.acquiredutils.client.config;
 
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+
 import java.util.List;
 
 public class ScrollableListWidget {
-    private static final int ROW_GAP = 5, SCROLLBAR_W = 5, WHEEL_STEP = 30;
+
+    private static final int ROW_GAP = 5;
+    private static final int SCROLLBAR_W = 5;
+    private static final int WHEEL_STEP = 30;
+
     private int x, y, width, height;
-    private float scroll = 0f, targetScroll = 0f;
+    private float scroll = 0f;
+    private float targetScroll = 0f;
     private int contentHeight = 0;
     private boolean draggingScrollbar = false;
     private ConfigCategory category;
 
     public void setBounds(int x, int y, int width, int height) {
-        this.x = x; this.y = y; this.width = width; this.height = height;
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
     }
+
     public void setCategory(ConfigCategory category) {
         if (this.category != category) {
-            this.category = category; this.scroll = 0f; this.targetScroll = 0f;
+            this.category = category;
+            this.scroll = 0f;
+            this.targetScroll = 0f;
         }
     }
-    private int maxScroll() { return Math.max(0, contentHeight - height); }
-    private void tickScroll(float partialTick) {
-        if (Math.abs(targetScroll - scroll) < 0.5f) scroll = targetScroll;
-        else scroll += (targetScroll - scroll) * Math.min(1f, 0.35f * Math.max(partialTick, 1f));
+
+    private int maxScroll() {
+        return Math.max(0, contentHeight - height);
     }
+
+    private void tickScroll(float partialTick) {
+        if (Math.abs(targetScroll - scroll) < 0.5f) {
+            scroll = targetScroll;
+        } else {
+            scroll += (targetScroll - scroll) * Math.min(1f, 0.35f * Math.max(partialTick, 1f));
+        }
+    }
+
     public void render(GuiGraphics graphics, Font font, int mouseX, int mouseY, float partialTick) {
         tickScroll(partialTick);
-        if (category == null || category.getSettings().isEmpty()) {
+
+        if (category == null || category.getElements().isEmpty()) {
             graphics.drawCenteredString(font, "No settings in this category", x + width / 2, y + height / 2 - 4, 0xFF808080);
-            contentHeight = 0; return;
+            contentHeight = 0;
+            return;
         }
+
         graphics.enableScissor(x, y, x + width, y + height);
+
         int cursorY = y - (int) scroll;
-        for (Setting<?> setting : category.getSettings()) {
-            int rh = setting.getHeight();
-            if (cursorY + rh >= y && cursorY <= y + height) {
-                drawRowChrome(graphics, x, cursorY, width, rh);
-                setting.render(graphics, font, x + 10, cursorY, width - 20, mouseX, mouseY, partialTick);
+        List<GuiElement> elements = category.getElements();
+        for (GuiElement element : elements) {
+            int elemHeight = element.getHeight();
+
+            if (cursorY + elemHeight >= y && cursorY <= y + height) {
+                // Only draw chrome for plain Settings; Sections draw their own chrome
+                if (!(element instanceof Section)) {
+                    drawRowChrome(graphics, x, cursorY, width, elemHeight);
+                }
+                element.render(graphics, font, x + 10, cursorY, width - 20, mouseX, mouseY, partialTick);
             }
-            cursorY += rh + ROW_GAP;
+
+            cursorY += elemHeight + ROW_GAP;
         }
+
         graphics.disableScissor();
+
         contentHeight = (cursorY + (int) scroll) - y - ROW_GAP;
-        if (targetScroll > maxScroll()) targetScroll = maxScroll();
+        if (targetScroll > maxScroll()) {
+            targetScroll = maxScroll();
+        }
+
         drawScrollbar(graphics);
     }
-    private void drawRowChrome(GuiGraphics g, int rx, int ry, int rw, int rh) {
-        g.fill(rx, ry, rx + 1, ry + rh, 0xFF08080E);
-        g.fill(rx + 1, ry, rx + rw, ry + 1, 0xFF08080E);
-        g.fill(rx + rw - 1, ry + 1, rx + rw, ry + rh, 0xFF28282E);
-        g.fill(rx + 1, ry + rh - 1, rx + rw - 1, ry + rh, 0xFF28282E);
-        g.fill(rx + 1, ry + 1, rx + rw - 1, ry + rh - 1, 0x6008080E);
+
+    private void drawRowChrome(GuiGraphics graphics, int rx, int ry, int rw, int rh) {
+        graphics.fill(rx, ry, rx + 1, ry + rh, 0xFF08080E);
+        graphics.fill(rx + 1, ry, rx + rw, ry + 1, 0xFF08080E);
+        graphics.fill(rx + rw - 1, ry + 1, rx + rw, ry + rh, 0xFF28282E);
+        graphics.fill(rx + 1, ry + rh - 1, rx + rw - 1, ry + rh, 0xFF28282E);
+        graphics.fill(rx + 1, ry + 1, rx + rw - 1, ry + rh - 1, 0x6008080E);
     }
-    private void drawScrollbar(GuiGraphics g) {
-        int max = maxScroll(); if (max <= 0) return;
-        int tx1 = x + width - SCROLLBAR_W, tx2 = x + width, ty1 = y + 5, ty2 = y + height - 5;
-        g.fill(tx1, ty1, tx2, ty2, 0xFF101010);
+
+    private void drawScrollbar(GuiGraphics graphics) {
+        int max = maxScroll();
+        if (max <= 0) return;
+
+        int trackX1 = x + width - SCROLLBAR_W;
+        int trackX2 = x + width;
+        int trackY1 = y + 5;
+        int trackY2 = y + height - 5;
+        graphics.fill(trackX1, trackY1, trackX2, trackY2, 0xFF101010);
+
         float barSize = Math.min(1f, (float) height / contentHeight);
-        int th = Math.max(10, Math.round((ty2 - ty1) * barSize));
-        float ratio = max == 0 ? 0 : scroll / max;
-        int thumbY = ty1 + Math.round((ty2 - ty1 - th) * ratio);
-        g.fill(tx1 + 1, thumbY, tx2 - 1, thumbY + th, 0xFF303030);
+        int trackHeight = trackY2 - trackY1;
+        int thumbH = Math.max(10, Math.round(trackHeight * barSize));
+        float scrollRatio = max == 0 ? 0 : scroll / max;
+        int thumbY = trackY1 + Math.round((trackHeight - thumbH) * scrollRatio);
+
+        graphics.fill(trackX1 + 1, thumbY, trackX2 - 1, thumbY + thumbH, 0xFF303030);
     }
-    public boolean mouseScrolled(double mx, double my, double sy) {
-        if (!isInside(mx, my)) return false;
-        int notch = sy > 0 ? -1 : (sy < 0 ? 1 : 0);
-        targetScroll = clamp(targetScroll + notch * WHEEL_STEP); return true;
+
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollY) {
+        if (!isInside(mouseX, mouseY)) return false;
+        int notch = scrollY > 0 ? -1 : (scrollY < 0 ? 1 : 0);
+        targetScroll = clamp(targetScroll + notch * WHEEL_STEP);
+        return true;
     }
-    private float clamp(float v) { return Math.max(0, Math.min(maxScroll(), v)); }
-    private boolean isInside(double mx, double my) { return mx >= x && mx <= x + width && my >= y && my <= y + height; }
-    public boolean mouseClicked(double mx, double my, int btn) {
+
+    private float clamp(float v) {
+        return Math.max(0, Math.min(maxScroll(), v));
+    }
+
+    private boolean isInside(double mx, double my) {
+        return mx >= x && mx <= x + width && my >= y && my <= y + height;
+    }
+
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (category == null) return false;
-        if (maxScroll() > 0 && mx >= x + width - SCROLLBAR_W && mx <= x + width) {
-            draggingScrollbar = true; scrollToThumbPosition(my); return true;
+
+        int max = maxScroll();
+        if (max > 0 && mouseX >= x + width - SCROLLBAR_W && mouseX <= x + width) {
+            draggingScrollbar = true;
+            scrollToThumbPosition(mouseY);
+            return true;
         }
-        if (!isInside(mx, my)) return false;
+
+        if (!isInside(mouseX, mouseY)) return false;
+
         int cursorY = y - (int) scroll;
-        for (Setting<?> s : category.getSettings()) {
-            int rh = s.getHeight();
-            if (my >= cursorY && my <= cursorY + rh) return s.mouseClicked(mx, my, btn, x + 10, cursorY, width - 20);
-            cursorY += rh + ROW_GAP;
+        for (GuiElement element : category.getElements()) {
+            int elemHeight = element.getHeight();
+            if (mouseY >= cursorY && mouseY <= cursorY + elemHeight) {
+                return element.mouseClicked(mouseX, mouseY, button, x + 10, cursorY, width - 20);
+            }
+            cursorY += elemHeight + ROW_GAP;
         }
         return false;
     }
-    public boolean mouseDragged(double mx, double my, int btn, double dx, double dy) {
-        if (draggingScrollbar) { scrollToThumbPosition(my); return true; }
+
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (draggingScrollbar) {
+            scrollToThumbPosition(mouseY);
+            return true;
+        }
         if (category == null) return false;
-        for (Setting<?> s : category.getSettings()) if (s.mouseDragged(mx, my, btn, dx, dy)) return true;
+
+        int cursorY = y - (int) scroll;
+        for (GuiElement element : category.getElements()) {
+            int elemHeight = element.getHeight();
+            if (element.mouseDragged(mouseX, mouseY, button, dragX, dragY)) {
+                return true;
+            }
+            cursorY += elemHeight + ROW_GAP;
+        }
         return false;
     }
-    public boolean mouseReleased(double mx, double my, int btn) {
-        boolean was = draggingScrollbar; draggingScrollbar = false;
-        if (category != null) for (Setting<?> s : category.getSettings()) s.mouseReleased(mx, my, btn);
-        return was;
+
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        boolean wasDragging = draggingScrollbar;
+        draggingScrollbar = false;
+
+        if (category != null) {
+            for (GuiElement element : category.getElements()) {
+                element.mouseReleased(mouseX, mouseY, button);
+            }
+        }
+        return wasDragging;
     }
-    private void scrollToThumbPosition(double my) {
-        int ty1 = y + 5, ty2 = y + height - 5;
-        float p = (float) (my - ty1) / (ty2 - ty1);
-        scroll = clamp(p * maxScroll()); targetScroll = scroll;
+
+    private void scrollToThumbPosition(double mouseY) {
+        int trackY1 = y + 5;
+        int trackY2 = y + height - 5;
+        float p = (float) (mouseY - trackY1) / (trackY2 - trackY1);
+        scroll = clamp(p * maxScroll());
+        targetScroll = scroll;
     }
 }
