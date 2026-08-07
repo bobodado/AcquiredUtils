@@ -1,4 +1,21 @@
 {
-  "key.acquiredutils.config": "Open AcquiredUtils Config",
-  "category.acquiredutils.general": "AcquiredUtils"
+  "key.acquiredutils.open_config": "Open AcquiredUtils Settings",
+  "key.categories.acquiredutils": "AcquiredUtils",
+
+  "acquiredutils.gui.title": "MOD SETTINGS: AcquiredUtils v1.0.0",
+  "acquiredutils.gui.tab.general": "General",
+  "acquiredutils.gui.tab.keybinds": "Keybinds",
+  "acquiredutils.gui.content_title.general": "GENERAL CONFIGURATION",
+
+  "acquiredutils.gui.setting.show_hud_overlay": "Show HUD Overlay",
+  "acquiredutils.gui.setting.example_slider": "Example",
+  "acquiredutils.gui.setting.gui_theme": "Gui Theme",
+
+  "acquiredutils.gui.theme.default": "Default",
+  "acquiredutils.gui.theme.dark": "Dark",
+  "acquiredutils.gui.theme.high_contrast": "High Contrast",
+
+  "acquiredutils.gui.save": "SAVE CHANGES",
+
+  "acquiredutils.gui.tab.keybinds.placeholder": "Keybinds coming soon."
 }
