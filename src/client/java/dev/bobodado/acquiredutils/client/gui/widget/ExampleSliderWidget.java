@@ -5,48 +5,49 @@ import net.minecraft.network.chat.Component;
 
 import java.util.function.Consumer;
 
-/**
- * Item 2 in the settings list: "Example" slider, range 0.1–5.0 (layout map
- * §4.6). Extends vanilla {@link AbstractSliderButton}, which internally
- * stores position as a normalized 0.0–1.0 double — this class maps that onto
- * the 0.1–5.0 range and shows the live value in the widget label.
- * <p>
- * VERIFY: AbstractSliderButton's constructor signature and abstract methods
- * (updateMessage / applyValue) for 1.21.11 — confirmed stable across many
- * past versions, but re-check against the actual artifact.
- */
 public class ExampleSliderWidget extends AbstractSliderButton {
 
-	private static final double MIN = 0.1;
-	private static final double MAX = 5.0;
+    private final double min;
+    private final double max;
+    private final Consumer<Float> onChange;
 
-	private final Consumer<Float> onChange;
+    public ExampleSliderWidget(int x, int y, int width, int height, float initialValue,
+                               float min, float max, Consumer<Float> onChange) {
+        super(x, y, width, height, Component.literal(format(initialValue, min, max)), toNormalized(initialValue, min, max));
+        this.min = min;
+        this.max = max;
+        this.onChange = onChange;
+    }
 
-	public ExampleSliderWidget(int x, int y, int width, int height, float initialValue, Consumer<Float> onChange) {
-		super(x, y, width, height, Component.literal(format(initialValue)), toNormalized(initialValue));
-		this.onChange = onChange;
-	}
+    /** Backward-compatible constructor for the original 0.1–5.0 slider. */
+    public ExampleSliderWidget(int x, int y, int width, int height, float initialValue, Consumer<Float> onChange) {
+        this(x, y, width, height, initialValue, 0.1f, 5.0f, onChange);
+    }
 
-	private static double toNormalized(float value) {
-		double clamped = Math.max(MIN, Math.min(MAX, value));
-		return (clamped - MIN) / (MAX - MIN);
-	}
+    private static double toNormalized(float value, double min, double max) {
+        double clamped = Math.max(min, Math.min(max, value));
+        return (clamped - min) / (max - min);
+    }
 
-	private float fromNormalized() {
-		return (float) (MIN + this.value * (MAX - MIN));
-	}
+    private float fromNormalized() {
+        return (float) (min + this.value * (max - min));
+    }
 
-	private static String format(float value) {
-		return String.format("%.1f", value);
-	}
+    private static String format(float value, double min, double max) {
+        // Show fewer decimals for menu scale (0.5–2.0) vs example (0.1–5.0)
+        if (min == 0.5 && max == 2.0) {
+            return String.format("%.2f", value);
+        }
+        return String.format("%.1f", value);
+    }
 
-	@Override
-	protected void updateMessage() {
-		setMessage(Component.literal(format(fromNormalized())));
-	}
+    @Override
+    protected void updateMessage() {
+        setMessage(Component.literal(format(fromNormalized(), min, max)));
+    }
 
-	@Override
-	protected void applyValue() {
-		onChange.accept(fromNormalized());
-	}
+    @Override
+    protected void applyValue() {
+        onChange.accept(fromNormalized());
+    }
 }

@@ -1,21 +1,31 @@
 {
   "key.acquiredutils.open_config": "Open AcquiredUtils Settings",
+  "key.acquiredutils.slot_lock": "Slot Lock",
   "key.categories.acquiredutils": "AcquiredUtils",
 
   "acquiredutils.gui.title": "MOD SETTINGS: AcquiredUtils v1.0.0",
   "acquiredutils.gui.tab.general": "General",
   "acquiredutils.gui.tab.keybinds": "Keybinds",
   "acquiredutils.gui.content_title.general": "GENERAL CONFIGURATION",
+  "acquiredutils.gui.content_title.keybinds": "KEYBINDS",
 
   "acquiredutils.gui.setting.show_hud_overlay": "Show HUD Overlay",
+  "acquiredutils.gui.desc.show_hud_overlay": "Display the overlay on your in-game HUD",
   "acquiredutils.gui.setting.example_slider": "Example",
-  "acquiredutils.gui.setting.gui_theme": "Gui Theme",
+  "acquiredutils.gui.desc.example_slider": "Adjust the example value from 0.1 to 5.0",
+  "acquiredutils.gui.setting.gui_theme": "GUI Theme",
+  "acquiredutils.gui.desc.gui_theme": "Choose your preferred interface style",
+  "acquiredutils.gui.setting.menu_scale": "Menu Scale",
+  "acquiredutils.gui.desc.menu_scale": "Adjust the size of this settings menu",
 
   "acquiredutils.gui.theme.default": "Default",
   "acquiredutils.gui.theme.dark": "Dark",
   "acquiredutils.gui.theme.high_contrast": "High Contrast",
 
-  "acquiredutils.gui.save": "SAVE CHANGES",
+  "acquiredutils.gui.add_keybind": "Add Keybind",
+  "acquiredutils.gui.keybind_name_hint": "Name...",
+  "acquiredutils.gui.confirm": "Set",
+  "acquiredutils.gui.keybind.slot_lock": "Slot Lock",
 
   "acquiredutils.gui.tab.keybinds.placeholder": "Keybinds coming soon."
 }
