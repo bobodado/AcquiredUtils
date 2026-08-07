@@ -169,11 +169,6 @@ public class AcquiredUtilsConfigScreen extends Screen {
             int cx = panelX + sidebarWidth + padding;
             int cy = panelY + headerHeight + padding;
 
-            graphics.pose().pushMatrix();
-            graphics.pose().translate(cx, cy);
-            graphics.pose().scale(1.5f, 1.5f);
-            graphics.pose().popMatrix();
-
             active.render(graphics, mouseX, mouseY, partialTick,
                     cx, cy, panelWidth - sidebarWidth - padding * 2,
                     panelHeight - headerHeight - footerHeight - padding * 2);
