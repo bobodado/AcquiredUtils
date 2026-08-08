@@ -18,9 +18,11 @@ public class KeybindsSection extends ModSection {
     private static final int COLOR_NONE = 0xFF666666;
     private static final int COLOR_ROW_HOVER = 0x20FFFFFF;
 
-    private int listeningIndex = -1;
+    private enum ListenTarget { NONE, SLOT_LOCK, CUSTOM }
+    private ListenTarget listening = ListenTarget.NONE;
+    private int listeningCustomIndex = -1;
     private boolean addingNew = false;
-    private EditBox messageField;
+    private EditBox nameField;
     private float scrollOffset = 0;
 
     private final List<RowHitbox> hitboxes = new ArrayList<>();
@@ -52,27 +54,23 @@ public class KeybindsSection extends ModSection {
         if (addingNew) {
             int fieldW = s(140), fieldH = s(16);
             int fieldY = contentY + btnH + s(6);
-            messageField = new EditBox(screen.getFont(), contentX, fieldY, fieldW, fieldH,
-                    Component.translatable("acquiredutils.gui.keybind_message_hint"));
-            messageField.setMaxLength(256);
-            messageField.setFocused(true);
-            screen.setFocused(messageField);
-            addWidget(messageField);
+            nameField = new EditBox(screen.getFont(), contentX, fieldY, fieldW, fieldH,
+                    Component.translatable("acquiredutils.gui.keybind_name_hint"));
+            nameField.setMaxLength(32);
+            nameField.setFocused(true);
+            screen.setFocused(nameField);
+            addWidget(nameField);
 
-            addWidget(Button.builder(Component.translatable("acquiredutils.gui.confirm"), b -> confirmAdd())
-                    .bounds(contentX + fieldW + s(4), fieldY, s(60), fieldH).build());
-        }
-    }
-
-    private void confirmAdd() {
-        if (messageField == null) return;
-        String message = messageField.getValue().trim();
-        if (!message.isEmpty()) {
-            AcquiredUtilsConfig.get().customKeybinds.add(
-                    new AcquiredUtilsConfig.CustomKeybindEntry(message, -1));
-            addingNew = false;
-            AcquiredUtilsClient.syncCustomKeybinds();
-            screen.rebuild();
+            addWidget(Button.builder(Component.translatable("acquiredutils.gui.confirm"), b -> {
+                String name = nameField.getValue().trim();
+                if (!name.isEmpty()) {
+                    AcquiredUtilsConfig.get().customKeybinds.add(
+                            new AcquiredUtilsConfig.CustomKeybindEntry(name, -1));
+                    addingNew = false;
+                    AcquiredUtilsClient.syncCustomKeybinds();
+                    screen.rebuild();
+                }
+            }).bounds(contentX + fieldW + s(4), fieldY, s(60), fieldH).build());
         }
     }
 
@@ -88,9 +86,10 @@ public class KeybindsSection extends ModSection {
         int clipY1 = listTop;
         int clipY2 = contentY + contentHeight;
         int rowH = s(24);
-        List<AcquiredUtilsConfig.CustomKeybindEntry> entries = AcquiredUtilsConfig.get().customKeybinds;
+        AcquiredUtilsConfig cfg = AcquiredUtilsConfig.get();
 
-        int totalH = entries.size() * rowH;
+        int totalRows = 1 + cfg.customKeybinds.size();
+        int totalH = totalRows * rowH;
         int visibleH = clipY2 - clipY1;
 
         if (scrollOffset < 0) scrollOffset = 0;
@@ -103,8 +102,16 @@ public class KeybindsSection extends ModSection {
         graphics.enableScissor(contentX, clipY1, contentX + contentWidth, clipY2);
 
         int drawY = listTop - (int) scrollOffset;
-        for (int i = 0; i < entries.size(); i++) {
-            drawY = renderRow(graphics, mouseX, mouseY, entries.get(i), contentX, drawY, contentWidth, rowH, i);
+
+        drawY = renderRow(graphics, mouseX, mouseY,
+                Component.translatable("acquiredutils.gui.keybind.slot_lock"),
+                cfg.slotLockKey, contentX, drawY, contentWidth, rowH, true, -1);
+
+        for (int i = 0; i < cfg.customKeybinds.size(); i++) {
+            var entry = cfg.customKeybinds.get(i);
+            drawY = renderRow(graphics, mouseX, mouseY,
+                    Component.literal(entry.message), entry.keyCode,
+                    contentX, drawY, contentWidth, rowH, false, i);
         }
 
         graphics.disableScissor();
@@ -117,31 +124,26 @@ public class KeybindsSection extends ModSection {
             graphics.fill(sbX, clipY1, sbX + sbW, clipY2, 0x30FFFFFF);
             graphics.fill(sbX, sbY, sbX + sbW, sbY + sbH, 0x80FFFFFF);
         }
-
-        if (entries.isEmpty() && !addingNew) {
-            graphics.drawString(screen.getFont(),
-                    Component.translatable("acquiredutils.gui.no_custom_keybinds"),
-                    contentX, listTop, 0xFF999999, false);
-        }
     }
 
-    private int renderRow(GuiGraphics g, int mx, int my, AcquiredUtilsConfig.CustomKeybindEntry entry,
-                          int x, int y, int w, int h, int index) {
-        boolean isListening = (index == listeningIndex);
+    private int renderRow(GuiGraphics g, int mx, int my, Component name, int keyCode,
+                          int x, int y, int w, int h, boolean builtIn, int customIdx) {
+        boolean isListening = (listening == ListenTarget.SLOT_LOCK && builtIn)
+                || (listening == ListenTarget.CUSTOM && !builtIn && customIdx == listeningCustomIndex);
         boolean hovered = my >= y && my < y + h && mx >= x && mx < x + w;
 
-        if (hovered && listeningIndex == -1) {
+        if (hovered && listening == ListenTarget.NONE) {
             g.fill(x, y, x + w, y + h, COLOR_ROW_HOVER);
         }
 
-        g.drawString(screen.getFont(), Component.literal(entry.message), x, y + (h - 8) / 2, 0xFFF2F2F2, false);
+        g.drawString(screen.getFont(), name, x, y + (h - 8) / 2, 0xFFF2F2F2, false);
 
         int keyBtnW = s(80), keyBtnH = s(16);
-        int keyBtnX = x + w - keyBtnW - s(22);
+        int keyBtnX = x + w - keyBtnW - (builtIn ? 0 : s(22));
         int keyBtnY = y + (h - keyBtnH) / 2;
 
-        int keyColor = isListening ? COLOR_LISTENING : (entry.keyCode < 0 ? COLOR_NONE : 0xFFF2F2F2);
-        String keyText = isListening ? "..." : getKeyName(entry.keyCode);
+        int keyColor = isListening ? COLOR_LISTENING : (keyCode < 0 ? COLOR_NONE : 0xFFF2F2F2);
+        String keyText = isListening ? "..." : getKeyName(keyCode);
 
         g.fill(keyBtnX, keyBtnY, keyBtnX + keyBtnW, keyBtnY + keyBtnH, 0xFF1A1A1A);
         g.renderOutline(keyBtnX, keyBtnY, keyBtnW, keyBtnH, isListening ? COLOR_LISTENING : 0xFF5A5A5A);
@@ -150,18 +152,23 @@ public class KeybindsSection extends ModSection {
         g.drawString(screen.getFont(), keyText, keyBtnX + (keyBtnW - tw) / 2,
                 keyBtnY + (keyBtnH - 8) / 2, keyColor, false);
 
-        int ds = s(14);
-        int dx = x + w - ds;
-        int dy = y + (h - ds) / 2;
-        boolean dHover = mx >= dx && mx < dx + ds && my >= dy && my < dy + ds;
-        int dc = dHover ? 0xFFFF5555 : 0xFFAA4444;
-        g.fill(dx, dy, dx + ds, dy + ds, dc);
-        g.renderOutline(dx, dy, ds, ds, 0xFFCC3333);
-        int xw = screen.getFont().width("x");
-        g.drawString(screen.getFont(), "x", dx + (ds - xw) / 2, dy + (ds - 8) / 2, 0xFFF2F2F2, false);
+        if (!builtIn) {
+            int ds = s(14);
+            int dx = x + w - ds;
+            int dy = y + (h - ds) / 2;
+            boolean dHover = mx >= dx && mx < dx + ds && my >= dy && my < dy + ds;
+            int dc = dHover ? 0xFFFF5555 : 0xFFAA4444;
+            g.fill(dx, dy, dx + ds, dy + ds, dc);
+            g.renderOutline(dx, dy, ds, ds, 0xFFCC3333);
+            int xw = screen.getFont().width("x");
+            g.drawString(screen.getFont(), "x", dx + (ds - xw) / 2, dy + (ds - 8) / 2, 0xFFF2F2F2, false);
+        }
 
-        hitboxes.add(new RowHitbox(keyBtnX, keyBtnY, keyBtnW, keyBtnH, 0, index));
-        hitboxes.add(new RowHitbox(dx, dy, ds, ds, 1, index));
+        hitboxes.add(new RowHitbox(keyBtnX, keyBtnY, keyBtnW, keyBtnH, builtIn ? 0 : 1, customIdx));
+        if (!builtIn) {
+            int ds = s(14);
+            hitboxes.add(new RowHitbox(x + w - ds, y + (h - ds) / 2, ds, ds, 2, customIdx));
+        }
 
         return y + h;
     }
@@ -173,31 +180,37 @@ public class KeybindsSection extends ModSection {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (listeningIndex != -1) {
-            boolean onKeyBox = false;
+        if (listening != ListenTarget.NONE) {
+            boolean onListeningKeyBox = false;
             for (RowHitbox box : hitboxes) {
-                if (box.type() == 0 && box.index() == listeningIndex
-                        && mouseX >= box.x() && mouseX < box.x() + box.w()
-                        && mouseY >= box.y() && mouseY < box.y() + box.h()) {
-                    onKeyBox = true;
+                boolean isKeyBox = (box.type == 0 || box.type == 1);
+                boolean matches = (listening == ListenTarget.SLOT_LOCK && box.type == 0)
+                        || (listening == ListenTarget.CUSTOM && box.type == 1 && box.index == listeningCustomIndex);
+                if (isKeyBox && matches
+                        && mouseX >= box.x && mouseX < box.x + box.w
+                        && mouseY >= box.y && mouseY < box.y + box.h) {
+                    onListeningKeyBox = true;
                     break;
                 }
             }
-            listeningIndex = -1;
-            return onKeyBox;
+            stopListening();
+            return onListeningKeyBox;
         }
 
         for (RowHitbox box : hitboxes) {
-            if (mouseX >= box.x() && mouseX < box.x() + box.w()
-                    && mouseY >= box.y() && mouseY < box.y() + box.h()) {
+            if (mouseX >= box.x && mouseX < box.x + box.w &&
+                mouseY >= box.y && mouseY < box.y + box.h) {
 
-                if (box.type() == 0) {
-                    // CRITICAL: steal focus from any widget so key events come to us
+                if (box.type == 0) {
                     screen.setFocused(null);
-                    listeningIndex = box.index();
+                    startListening(ListenTarget.SLOT_LOCK, -1);
                     return true;
-                } else {
-                    AcquiredUtilsConfig.get().customKeybinds.remove(box.index());
+                } else if (box.type == 1) {
+                    screen.setFocused(null);
+                    startListening(ListenTarget.CUSTOM, box.index);
+                    return true;
+                } else if (box.type == 2) {
+                    AcquiredUtilsConfig.get().customKeybinds.remove(box.index);
                     AcquiredUtilsClient.syncCustomKeybinds();
                     screen.rebuild();
                     return true;
@@ -215,39 +228,59 @@ public class KeybindsSection extends ModSection {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
-        if (listeningIndex != -1) {
-            try {
-                List<AcquiredUtilsConfig.CustomKeybindEntry> entries = AcquiredUtilsConfig.get().customKeybinds;
-                if (listeningIndex >= 0 && listeningIndex < entries.size()) {
-                    int keyCode = InputConstants.getKey(event).getValue();
-                    if (keyCode == 256) { // Escape = unbind
-                        keyCode = -1;
-                    }
-                    entries.get(listeningIndex).keyCode = keyCode;
-                    AcquiredUtilsClient.syncCustomKeybinds();
-                }
-            } finally {
-                // ALWAYS reset, even if syncCustomKeybinds() throws
-                listeningIndex = -1;
+        if (listening != ListenTarget.NONE) {
+            int keyCode = InputConstants.getKey(event).getValue();
+
+            if (keyCode == 256) {
+                stopListening();
+                return true;
             }
+
+            AcquiredUtilsConfig cfg = AcquiredUtilsConfig.get();
+            if (listening == ListenTarget.SLOT_LOCK) {
+                cfg.slotLockKey = keyCode;
+                AcquiredUtilsClient.syncSlotLockKeybind();
+            } else if (listeningCustomIndex >= 0 && listeningCustomIndex < cfg.customKeybinds.size()) {
+                cfg.customKeybinds.get(listeningCustomIndex).keyCode = keyCode;
+                AcquiredUtilsClient.syncCustomKeybinds();
+            }
+
+            stopListening();
             return true;
         }
 
-        if (addingNew && messageField != null && messageField.isFocused()) {
+        if (addingNew && nameField != null && nameField.isFocused()) {
             int keyCode = InputConstants.getKey(event).getValue();
-            if (keyCode == 257 || keyCode == 335) { // Enter
-                confirmAdd();
+            if (keyCode == 257 || keyCode == 335) {
+                String name = nameField.getValue().trim();
+                if (!name.isEmpty()) {
+                    AcquiredUtilsConfig cfg = AcquiredUtilsConfig.get();
+                    cfg.customKeybinds.add(new AcquiredUtilsConfig.CustomKeybindEntry(name, -1));
+                    addingNew = false;
+                    AcquiredUtilsClient.syncCustomKeybinds();
+                    screen.rebuild();
+                }
                 return true;
             }
-            return false;
         }
 
         return false;
     }
 
+    private void startListening(ListenTarget target, int idx) {
+        this.listening = target;
+        this.listeningCustomIndex = idx;
+    }
+
+    private void stopListening() {
+        this.listening = ListenTarget.NONE;
+        this.listeningCustomIndex = -1;
+    }
+
     @Override
     public void onClose() {
-        listeningIndex = -1;
+        stopListening();
+        AcquiredUtilsClient.syncSlotLockKeybind();
         AcquiredUtilsClient.syncCustomKeybinds();
     }
 }

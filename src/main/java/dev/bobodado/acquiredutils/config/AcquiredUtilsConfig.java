@@ -26,7 +26,6 @@ public final class AcquiredUtilsConfig {
     public GuiTheme guiTheme = GuiTheme.DARK;
     public float menuScale = 1.0f;
 
-    public boolean slotLockEnabled = false;
     public int slotLockKey = -1;
 
     public List<CustomKeybindEntry> customKeybinds = new ArrayList<>();

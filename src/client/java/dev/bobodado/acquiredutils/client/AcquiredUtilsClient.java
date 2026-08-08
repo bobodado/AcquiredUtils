@@ -23,7 +23,7 @@ public class AcquiredUtilsClient implements ClientModInitializer {
             KeyMapping.Category.register(Identifier.fromNamespaceAndPath(AcquiredUtils.MOD_ID, "acquiredutils"));
 
     private static KeyMapping openConfigKey;
-    private static KeyMapping slotLockKeybind;
+    public static KeyMapping slotLockKeybind;
 
     private static final Map<String, KeyMapping> customKeybindMap = new HashMap<>();
 
@@ -59,7 +59,7 @@ public class AcquiredUtilsClient implements ClientModInitializer {
             }
 
             while (slotLockKeybind.consumeClick()) {
-                if (client.player != null && AcquiredUtilsConfig.get().slotLockEnabled) {
+                if (client.player != null) {
                     AcquiredUtils.LOGGER.info("[AcquiredUtils] Slot Lock triggered!");
                 }
             }

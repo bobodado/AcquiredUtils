@@ -1,22 +1,16 @@
 package dev.bobodado.acquiredutils.client.gui.section;
 
-import com.mojang.blaze3d.platform.InputConstants;
-import dev.bobodado.acquiredutils.client.AcquiredUtilsClient;
 import dev.bobodado.acquiredutils.client.gui.widget.DropdownWidget;
 import dev.bobodado.acquiredutils.client.gui.widget.ExampleSliderWidget;
-import dev.bobodado.acquiredutils.client.gui.widget.LockedKeybindWidget;
 import dev.bobodado.acquiredutils.config.AcquiredUtilsConfig;
 import net.minecraft.client.gui.components.Checkbox;
-import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 
 import java.util.List;
 
-public class GeneralSection extends ModSection
+public class GeneralSection extends ModSection {
 
-{
-
-        public GeneralSection(dev.bobodado.acquiredutils.client.gui.AcquiredUtilsConfigScreen screen) {
+    public GeneralSection(dev.bobodado.acquiredutils.client.gui.AcquiredUtilsConfigScreen screen) {
         super(screen);
     }
 
@@ -71,20 +65,6 @@ public class GeneralSection extends ModSection
                     screen.rebuild();
                 }
         ));
-        rowY += s(40);
-
-        addWidget(new LockedKeybindWidget(
-                contentX, rowY, cw, s(16),
-                Component.translatable("acquiredutils.gui.keybind.slot_lock"),
-                keybindSlot,
-                () -> cfg.slotLockEnabled,
-                enabled -> cfg.slotLockEnabled = enabled,
-                () -> cfg.slotLockKey,
-                keyCode -> {
-                    cfg.slotLockKey = keyCode;
-                    AcquiredUtilsClient.syncSlotLockKeybind();
-                }
-        ));
     }
 
     @Override
@@ -114,23 +94,5 @@ public class GeneralSection extends ModSection
                 Component.translatable("acquiredutils.gui.setting.menu_scale"),
                 contentX, rowY + s(3), 0xFFF2F2F2, false);
         screen.drawDescription(graphics, "acquiredutils.gui.desc.menu_scale", contentX, rowY + s(11));
-    }
-
-    @Override
-    public boolean keyPressed(KeyEvent event) {
-        if (keybindSlot.current != null) {
-            int keyCode = InputConstants.getKey(event).getValue();
-            if (keyCode == 256) { // Escape: unbind
-                keyCode = -1;
-            }
-            keybindSlot.current.applyKeyCode(keyCode);
-            return true;
-        }
-        return false;
-    }
-
-    @Override
-    public void onClose() {
-        keybindSlot.current = null;
     }
 }
