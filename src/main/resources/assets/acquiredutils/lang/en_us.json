@@ -1,31 +1,29 @@
 {
-  "key.acquiredutils.open_config": "Open AcquiredUtils Settings",
-  "key.acquiredutils.slot_lock": "Slot Lock",
-  "key.categories.acquiredutils": "AcquiredUtils",
-
-  "acquiredutils.gui.title": "MOD SETTINGS: AcquiredUtils v1.0.0",
+  "acquiredutils.gui.title": "AcquiredUtils Settings",
+  
   "acquiredutils.gui.tab.general": "General",
   "acquiredutils.gui.tab.keybinds": "Keybinds",
-  "acquiredutils.gui.content_title.general": "GENERAL CONFIGURATION",
-  "acquiredutils.gui.content_title.keybinds": "KEYBINDS",
-
+  
+  "acquiredutils.gui.add_keybind": "Add Keybind",
+  "acquiredutils.gui.confirm": "Confirm",
+  "acquiredutils.gui.keybind_message_hint": "Enter message...",
+  "acquiredutils.gui.no_custom_keybinds": "No custom keybinds yet. Click 'Add Keybind' to create one.",
+  
+  "acquiredutils.gui.keybind.slot_lock": "Slot Lock",
+  
   "acquiredutils.gui.setting.show_hud_overlay": "Show HUD Overlay",
-  "acquiredutils.gui.desc.show_hud_overlay": "Display the overlay on your in-game HUD",
-  "acquiredutils.gui.setting.example_slider": "Example",
-  "acquiredutils.gui.desc.example_slider": "Adjust the example value from 0.1 to 5.0",
+  "acquiredutils.gui.desc.show_hud_overlay": "Toggle the in-game HUD overlay display",
+  
+  "acquiredutils.gui.setting.example_slider": "Example Slider",
+  "acquiredutils.gui.desc.example_slider": "A demo slider for testing the settings UI",
+  
   "acquiredutils.gui.setting.gui_theme": "GUI Theme",
-  "acquiredutils.gui.desc.gui_theme": "Choose your preferred interface style",
+  "acquiredutils.gui.desc.gui_theme": "Change the appearance of the settings menu",
+  
   "acquiredutils.gui.setting.menu_scale": "Menu Scale",
-  "acquiredutils.gui.desc.menu_scale": "Adjust the size of this settings menu",
-
+  "acquiredutils.gui.desc.menu_scale": "Adjust the size of the settings panel",
+  
   "acquiredutils.gui.theme.default": "Default",
   "acquiredutils.gui.theme.dark": "Dark",
-  "acquiredutils.gui.theme.high_contrast": "High Contrast",
-
-  "acquiredutils.gui.add_keybind": "Add Keybind",
-  "acquiredutils.gui.keybind_name_hint": "Name...",
-  "acquiredutils.gui.confirm": "Set",
-  "acquiredutils.gui.keybind.slot_lock": "Slot Lock",
-
-  "acquiredutils.gui.tab.keybinds.placeholder": "Keybinds coming soon."
+  "acquiredutils.gui.theme.high_contrast": "High Contrast"
 }

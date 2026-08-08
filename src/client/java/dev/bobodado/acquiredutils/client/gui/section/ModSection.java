@@ -36,8 +36,6 @@ public abstract class ModSection {
 
     public boolean mouseClicked(double mouseX, double mouseY, int button) { return false; }
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) { return false; }
-
-    /** Now accepts KeyEvent directly — sections extract what they need. */
     public boolean keyPressed(KeyEvent event) { return false; }
 
     public void onClose() {}
