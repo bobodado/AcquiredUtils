@@ -11,9 +11,6 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
 
 public final class AcquiredUtilsConfig {
 
@@ -26,32 +23,20 @@ public final class AcquiredUtilsConfig {
 	public GuiTheme guiTheme = GuiTheme.DARK;
 	public float menuScale = 1.0f;
 
-	/** Slot Lock: the one built-in "locked keybind" example, now hosted in GeneralSection via LockedKeybindWidget. */
+	/**
+	 * Slot Lock: a fixed mod feature, not player-authored. The player can
+	 * toggle it and rebind its key, but never change what it does — this is
+	 * the "locked keybind" pattern all keybinds in KeybindsSection follow.
+	 * Add more fields here (+ a matching LockedKeybindWidget row in
+	 * KeybindsSection) if/when a second fixed feature needs its own keybind.
+	 */
 	public boolean slotLockEnabled = false;
 	public int slotLockKey = -1; // -1 = unbound
-
-	/** Player-defined "press this key, send this chat message" bindings — freely add/remove any number. */
-	public List<CustomKeybindEntry> customKeybinds = new ArrayList<>();
 
 	public enum GuiTheme {
 		DEFAULT,
 		DARK,
 		HIGH_CONTRAST
-	}
-
-	public static class CustomKeybindEntry {
-		public String id;      // stable identity, independent of list position
-		public String message; // chat message sent when pressed (supports "/command" too)
-		public int keyCode;    // -1 = unbound
-
-		public CustomKeybindEntry() {
-		}
-
-		public CustomKeybindEntry(String message, int keyCode) {
-			this.id = UUID.randomUUID().toString();
-			this.message = message;
-			this.keyCode = keyCode;
-		}
 	}
 
 	private AcquiredUtilsConfig() {
@@ -78,14 +63,6 @@ public final class AcquiredUtilsConfig {
 			INSTANCE = (loaded != null) ? loaded : new AcquiredUtilsConfig();
 			if (INSTANCE.guiTheme == null) {
 				INSTANCE.guiTheme = GuiTheme.DARK;
-			}
-			if (INSTANCE.customKeybinds == null) {
-				INSTANCE.customKeybinds = new ArrayList<>();
-			}
-			for (CustomKeybindEntry entry : INSTANCE.customKeybinds) {
-				if (entry.id == null) {
-					entry.id = UUID.randomUUID().toString();
-				}
 			}
 			INSTANCE.menuScale = Math.max(0.5f, Math.min(2.0f, INSTANCE.menuScale));
 			AcquiredUtils.LOGGER.info("[AcquiredUtils] Loaded config from {}", path);
