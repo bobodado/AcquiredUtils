@@ -23,13 +23,7 @@ public final class AcquiredUtilsConfig {
 	public GuiTheme guiTheme = GuiTheme.DARK;
 	public float menuScale = 1.0f;
 
-	/**
-	 * Slot Lock: a fixed mod feature, not player-authored. The player can
-	 * toggle it and rebind its key, but never change what it does — this is
-	 * the "locked keybind" pattern all keybinds in KeybindsSection follow.
-	 * Add more fields here (+ a matching LockedKeybindWidget row in
-	 * KeybindsSection) if/when a second fixed feature needs its own keybind.
-	 */
+	/** Slot Lock: a fixed mod feature, lives in KeybindsSection via LockedKeybindWidget. */
 	public boolean slotLockEnabled = false;
 	public int slotLockKey = -1; // -1 = unbound
 

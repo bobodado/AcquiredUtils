@@ -2,10 +2,10 @@ package dev.bobodado.acquiredutils.client.gui;
 
 import dev.bobodado.acquiredutils.AcquiredUtils;
 import dev.bobodado.acquiredutils.client.gui.section.ModSection;
+import dev.bobodado.acquiredutils.client.gui.widget.ThemedButtonWidget;
 import dev.bobodado.acquiredutils.config.AcquiredUtilsConfig;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -21,19 +21,21 @@ public class AcquiredUtilsConfigScreen extends Screen {
 
     public static final int BASE_PANEL_WIDTH = 480;
     public static final int BASE_PANEL_HEIGHT = 260;
-    public static final int BASE_HEADER_HEIGHT = 22;
+    // Bumped from 22 -> 32 to fit the credit line under the title without
+    // cramping either line. Every other layout value (content start, footer
+    // position, etc.) derives from this at runtime, so growing it is safe —
+    // nothing else hardcodes the old 22.
+    public static final int BASE_HEADER_HEIGHT = 32;
     public static final int BASE_FOOTER_HEIGHT = 26;
     public static final int BASE_SIDEBAR_WIDTH = 110;
     public static final int BASE_PADDING = 8;
     public static final int BASE_TAB_HEIGHT = 18;
 
-    // --- "Ancient Forge" theme: dark charcoal base, warm bronze/copper frame,
-    // ember-orange accents. Built entirely from fill()/renderOutline()/
-    // drawString() calls already proven to compile — gradients are simulated
-    // with per-row fill() bands rather than an unverified fillGradient call.
+    // --- "Ancient Forge" theme ---
     private static final int COLOR_WHITE = 0xFFF2F2F2;
-    private static final int COLOR_ACCENT = 0xFFE38A2D;          // ember orange — matches existing title accent
-    private static final int COLOR_ACCENT_BRIGHT = 0xFFD98F3E;   // frame highlight / active-tab edge
+    private static final int COLOR_ACCENT = 0xFFE38A2D;
+    private static final int COLOR_ACCENT_BRIGHT = 0xFFD98F3E;
+    private static final int COLOR_CREDIT = 0x99C9A876; // muted warm gray-gold, subtle watermark tone
 
     private static final int COLOR_PANEL_TOP = 0xFF32241C;
     private static final int COLOR_PANEL_BOTTOM = 0xFF1C1512;
@@ -130,9 +132,9 @@ public class AcquiredUtilsConfigScreen extends Screen {
 
     private void buildHeader() {
         int closeSize = s(12);
-        addRenderableWidget(Button.builder(Component.literal("X"), b -> onClose())
-                .bounds(panelX + panelWidth - closeSize - padding, panelY + padding, closeSize, closeSize)
-                .build());
+        addRenderableWidget(new ThemedButtonWidget(
+                panelX + panelWidth - closeSize - padding, panelY + padding, closeSize, closeSize,
+                Component.literal("X"), this::onClose));
     }
 
     private void buildSidebarTabs() {
@@ -146,9 +148,8 @@ public class AcquiredUtilsConfigScreen extends Screen {
             int y = tabY + i * (tabHeight + s(4));
             tabPositions.add(new TabPos(tabX, y, tabWidth, tabHeight, id));
 
-            addRenderableWidget(Button.builder(section.getDisplayName(), b -> {
-                switchTab(id);
-            }).bounds(tabX, y, tabWidth, tabHeight).build());
+            addRenderableWidget(new ThemedButtonWidget(tabX, y, tabWidth, tabHeight,
+                    section.getDisplayName(), () -> switchTab(id), true));
             i++;
         }
     }
@@ -165,18 +166,30 @@ public class AcquiredUtilsConfigScreen extends Screen {
         drawPanelChrome(graphics);
 
         int titleX = panelX + padding;
-        int titleY = panelY + (headerHeight - s(8)) / 2;
+        int titleY = panelY + s(6);
         graphics.drawString(this.font, Component.literal("MOD SETTINGS: "), titleX, titleY, COLOR_WHITE, false);
         int afterFirst = titleX + this.font.width("MOD SETTINGS: ");
-        graphics.drawString(this.font, Component.literal("AcquiredUtils"), afterFirst, titleY, COLOR_ACCENT, false);
-        int afterSecond = afterFirst + this.font.width("AcquiredUtils");
+
+        Component boldName = Component.literal("AcquiredUtils").copy().withStyle(Style.EMPTY.withBold(true));
+        graphics.drawString(this.font, boldName, afterFirst, titleY, COLOR_ACCENT, false);
+        int afterSecond = afterFirst + this.font.width(boldName);
+
         graphics.drawString(this.font, Component.literal(" v1.0.0"), afterSecond, titleY, COLOR_WHITE, false);
 
-        // Subtle accent underline beneath the header text, tying it to the frame color.
+        // Credit line, directly under the title. Change the name here if
+        // needed — everything else about this line (position, style, color)
+        // stays the same.
+        Component credit = Component.literal("Interface designed by ii8we")
+                .copy().withStyle(Style.EMPTY.withItalic(true));
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(titleX, panelY + s(17));
+        graphics.pose().scale(0.75f, 0.75f);
+        graphics.drawString(this.font, credit, 0, 0, COLOR_CREDIT, false);
+        graphics.pose().popMatrix();
+
         int underlineY = panelY + headerHeight - 1;
         graphics.fill(panelX, underlineY, panelX + panelWidth, underlineY + 1, COLOR_DIVIDER);
 
-        // Divider between the sidebar and the content panel.
         graphics.fill(panelX + sidebarWidth, panelY + headerHeight,
                 panelX + sidebarWidth + 1, panelY + panelHeight - footerHeight, COLOR_DIVIDER);
 
@@ -190,11 +203,6 @@ public class AcquiredUtilsConfigScreen extends Screen {
                     panelHeight - headerHeight - footerHeight - padding * 2);
         }
 
-        // Buttons (including tab buttons) render here. The active-tab
-        // highlight below is drawn AFTER this on purpose — drawing it before
-        // super.render() meant the vanilla button background painted right
-        // over it, making the active tab indicator invisible. This ordering
-        // is the actual fix, not just a visual tweak.
         super.render(graphics, mouseX, mouseY, partialTick);
 
         for (TabPos tab : tabPositions) {
@@ -209,24 +217,19 @@ public class AcquiredUtilsConfigScreen extends Screen {
     private void drawPanelChrome(GuiGraphics graphics) {
         int ft = Math.max(1, s(4));
 
-        // Soft drop shadow behind the whole panel.
         int shadowOffset = Math.max(1, s(3));
         graphics.fill(panelX - ft + shadowOffset, panelY - ft + shadowOffset,
                 panelX + panelWidth + ft + shadowOffset, panelY + panelHeight + ft + shadowOffset, COLOR_SHADOW);
 
-        // Panel background: vertical gradient instead of a flat fill.
         fillVerticalGradient(graphics, panelX, panelY, panelX + panelWidth, panelY + panelHeight,
                 COLOR_PANEL_TOP, COLOR_PANEL_BOTTOM);
 
-        // Beveled frame: dark outer edge, warm bronze mid layer, bright inner highlight line.
         graphics.renderOutline(panelX - ft, panelY - ft, panelWidth + ft * 2, panelHeight + ft * 2, COLOR_FRAME_OUTER);
         graphics.renderOutline(panelX - ft + 1, panelY - ft + 1, panelWidth + ft * 2 - 2, panelHeight + ft * 2 - 2, COLOR_FRAME_MID);
         graphics.renderOutline(panelX - 1, panelY - 1, panelWidth + 2, panelHeight + 2, COLOR_ACCENT_BRIGHT);
 
-        // Corner accent brackets on the outer frame.
         drawCornerAccents(graphics, panelX - ft, panelY - ft, panelWidth + ft * 2, panelHeight + ft * 2);
 
-        // Header / sidebar / footer, each a subtle vertical gradient.
         fillVerticalGradient(graphics, panelX, panelY, panelX + panelWidth, panelY + headerHeight,
                 COLOR_HEADER_TOP, COLOR_HEADER_BOTTOM);
         fillVerticalGradient(graphics, panelX, panelY + headerHeight, panelX + sidebarWidth, panelY + panelHeight - footerHeight,
@@ -235,26 +238,20 @@ public class AcquiredUtilsConfigScreen extends Screen {
                 COLOR_FOOTER_TOP, COLOR_FOOTER_BOTTOM);
     }
 
-    /** Small L-shaped accent brackets at each corner of the given rectangle, for an ornate-frame look. */
     private void drawCornerAccents(GuiGraphics graphics, int x, int y, int w, int h) {
         int len = Math.max(2, s(9));
         int thick = Math.max(1, s(2));
 
-        // Top-left
         graphics.fill(x, y, x + len, y + thick, COLOR_ACCENT_BRIGHT);
         graphics.fill(x, y, x + thick, y + len, COLOR_ACCENT_BRIGHT);
-        // Top-right
         graphics.fill(x + w - len, y, x + w, y + thick, COLOR_ACCENT_BRIGHT);
         graphics.fill(x + w - thick, y, x + w, y + len, COLOR_ACCENT_BRIGHT);
-        // Bottom-left
         graphics.fill(x, y + h - thick, x + len, y + h, COLOR_ACCENT_BRIGHT);
         graphics.fill(x, y + h - len, x + thick, y + h, COLOR_ACCENT_BRIGHT);
-        // Bottom-right
         graphics.fill(x + w - len, y + h - thick, x + w, y + h, COLOR_ACCENT_BRIGHT);
         graphics.fill(x + w - thick, y + h - len, x + w, y + h, COLOR_ACCENT_BRIGHT);
     }
 
-    /** Linear-interpolates two ARGB ints. Used to simulate a gradient with plain fill() calls. */
     private static int lerpColor(int colorA, int colorB, float t) {
         t = Math.max(0f, Math.min(1f, t));
         int a1 = (colorA >> 24) & 0xFF, r1 = (colorA >> 16) & 0xFF, g1 = (colorA >> 8) & 0xFF, b1 = colorA & 0xFF;
@@ -266,7 +263,6 @@ public class AcquiredUtilsConfigScreen extends Screen {
         return (a << 24) | (r << 16) | (g << 8) | b;
     }
 
-    /** Draws a top-to-bottom gradient using one fill() call per pixel row — no unverified GuiGraphics API needed. */
     private static void fillVerticalGradient(GuiGraphics graphics, int x1, int y1, int x2, int y2, int colorTop, int colorBottom) {
         int height = y2 - y1;
         if (height <= 0) return;

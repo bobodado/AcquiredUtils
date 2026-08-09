@@ -3,12 +3,19 @@ package dev.bobodado.acquiredutils.client.gui.section;
 import dev.bobodado.acquiredutils.client.gui.widget.DropdownWidget;
 import dev.bobodado.acquiredutils.client.gui.widget.ExampleSliderWidget;
 import dev.bobodado.acquiredutils.config.AcquiredUtilsConfig;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Checkbox;
 import net.minecraft.network.chat.Component;
 
 import java.util.List;
 
 public class GeneralSection extends ModSection {
+
+	// Row labels are drawn 1.4x normal size (via the same pose push/translate/
+	// scale/pop pattern already used successfully by drawDescription) to make
+	// each row feel more substantial and use the panel's vertical space
+	// better, instead of small text floating in a lot of empty room.
+	private static final float LABEL_SCALE = 1.4f;
 
 	public GeneralSection(dev.bobodado.acquiredutils.client.gui.AcquiredUtilsConfigScreen screen) {
 		super(screen);
@@ -67,32 +74,33 @@ public class GeneralSection extends ModSection {
 		));
 	}
 
+	/** Draws a row label at LABEL_SCALE, matching drawDescription's pose-transform pattern. */
+	private void drawLabel(GuiGraphics graphics, Component label, int x, int y) {
+		graphics.pose().pushMatrix();
+		graphics.pose().translate(x, y);
+		graphics.pose().scale(LABEL_SCALE, LABEL_SCALE);
+		graphics.drawString(screen.getFont(), label, 0, 0, 0xFFF2F2F2, false);
+		graphics.pose().popMatrix();
+	}
+
 	@Override
-	public void render(net.minecraft.client.gui.GuiGraphics graphics, int mouseX, int mouseY, float partialTick,
+	public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick,
 	                   int contentX, int contentY, int contentWidth, int contentHeight) {
 		int rowY = contentY;
 
-		graphics.drawString(screen.getFont(),
-				Component.translatable("acquiredutils.gui.setting.show_hud_overlay"),
-				contentX, rowY + s(3), 0xFFF2F2F2, false);
-		screen.drawDescription(graphics, "acquiredutils.gui.desc.show_hud_overlay", contentX, rowY + s(11));
+		drawLabel(graphics, Component.translatable("acquiredutils.gui.setting.show_hud_overlay"), contentX, rowY);
+		screen.drawDescription(graphics, "acquiredutils.gui.desc.show_hud_overlay", contentX, rowY + s(14));
 		rowY += s(40);
 
-		graphics.drawString(screen.getFont(),
-				Component.translatable("acquiredutils.gui.setting.example_slider"),
-				contentX, rowY + s(3), 0xFFF2F2F2, false);
-		screen.drawDescription(graphics, "acquiredutils.gui.desc.example_slider", contentX, rowY + s(11));
+		drawLabel(graphics, Component.translatable("acquiredutils.gui.setting.example_slider"), contentX, rowY);
+		screen.drawDescription(graphics, "acquiredutils.gui.desc.example_slider", contentX, rowY + s(14));
 		rowY += s(40);
 
-		graphics.drawString(screen.getFont(),
-				Component.translatable("acquiredutils.gui.setting.gui_theme"),
-				contentX, rowY + s(3), 0xFFF2F2F2, false);
-		screen.drawDescription(graphics, "acquiredutils.gui.desc.gui_theme", contentX, rowY + s(11));
+		drawLabel(graphics, Component.translatable("acquiredutils.gui.setting.gui_theme"), contentX, rowY);
+		screen.drawDescription(graphics, "acquiredutils.gui.desc.gui_theme", contentX, rowY + s(14));
 		rowY += s(40);
 
-		graphics.drawString(screen.getFont(),
-				Component.translatable("acquiredutils.gui.setting.menu_scale"),
-				contentX, rowY + s(3), 0xFFF2F2F2, false);
-		screen.drawDescription(graphics, "acquiredutils.gui.desc.menu_scale", contentX, rowY + s(11));
+		drawLabel(graphics, Component.translatable("acquiredutils.gui.setting.menu_scale"), contentX, rowY);
+		screen.drawDescription(graphics, "acquiredutils.gui.desc.menu_scale", contentX, rowY + s(14));
 	}
 }

@@ -49,8 +49,6 @@ public class AcquiredUtilsClient implements ClientModInitializer {
 				}
 			}
 
-			// Slot Lock only fires when enabled; the key stays registered
-			// regardless so consumeClick() always drains its buffer.
 			while (slotLockKeybind.consumeClick()) {
 				if (client.player != null && AcquiredUtilsConfig.get().slotLockEnabled) {
 					AcquiredUtils.LOGGER.info("[AcquiredUtils] Slot Lock triggered!");

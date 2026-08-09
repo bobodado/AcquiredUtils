@@ -5,19 +5,20 @@ import dev.bobodado.acquiredutils.client.AcquiredUtilsClient;
 import dev.bobodado.acquiredutils.client.gui.widget.KeyListenerSlot;
 import dev.bobodado.acquiredutils.client.gui.widget.LockedKeybindWidget;
 import dev.bobodado.acquiredutils.config.AcquiredUtilsConfig;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 
 /**
  * Every keybind here is a fixed mod feature: the player can toggle it and
- * rebind its key, but the action itself is not player-authored — that's the
- * "locked keybind" pattern (see LockedKeybindWidget). Slot Lock is currently
- * the only one; add more rows the same way if/when a second fixed feature
- * needs its own keybind.
+ * rebind its key, but the action itself is not player-authored. Slot Lock is
+ * currently the only one; add more rows the same way (buildContent() +
+ * matching render() description line) if/when a second fixed feature needs
+ * its own keybind.
  * <p>
- * (The previous version of this section also let players add arbitrary
- * "press key -> send chat message" entries. That's been removed — that use
- * case is intentionally left to a dedicated macro/auto-text mod instead.)
+ * Row height bumped from 16 -> 22 to give LockedKeybindWidget's now-larger
+ * label room to breathe, and the description offset moved down to match —
+ * both values only affect this section's own layout.
  */
 public class KeybindsSection extends ModSection {
 
@@ -43,7 +44,7 @@ public class KeybindsSection extends ModSection {
 		int rowY = contentY;
 
 		addWidget(new LockedKeybindWidget(
-				contentX, rowY, contentWidth, s(16),
+				contentX, rowY, contentWidth, s(22),
 				Component.translatable("acquiredutils.gui.keybind.slot_lock"),
 				keybindSlot,
 				() -> cfg.slotLockEnabled,
@@ -56,7 +57,18 @@ public class KeybindsSection extends ModSection {
 		));
 
 		// Add more LockedKeybindWidget rows here for future fixed features,
-		// e.g.: rowY += s(24); addWidget(new LockedKeybindWidget(contentX, rowY, ...));
+		// e.g.: rowY += s(40); addWidget(new LockedKeybindWidget(contentX, rowY, ...));
+		// — and a matching description line in render() below.
+	}
+
+	@Override
+	public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick,
+	                    int contentX, int contentY, int contentWidth, int contentHeight) {
+		// Sits just below the row (row height s(22)), matching GeneralSection's
+		// label-then-description spacing pattern. If this still shows the raw
+		// key "acquiredutils.gui.desc.slot_lock" instead of real text in-game,
+		// that key is missing from en_us.json — add it there, not here.
+		screen.drawDescription(graphics, "acquiredutils.gui.desc.slot_lock", contentX, contentY + s(26));
 	}
 
 	@Override

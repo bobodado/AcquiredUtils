@@ -15,24 +15,22 @@ import java.util.function.IntSupplier;
 
 /**
  * A single "built-in feature" row: [on/off checkbox]  Label  ......  [key box].
- * <p>
- * A plain AbstractWidget, dropped into any ModSection's buildContent() next
- * to its other normal widgets — participates in the screen's existing
- * widget dispatch exactly like a checkbox/slider/dropdown does. Represents a
- * fixed, built-in mod feature (e.g. "Slot Lock") the player can toggle and
- * rebind, but never delete.
- * <p>
- * Key capture uses KeyListenerSlot (see that class for why) — clicking the
- * key box arms this widget into the shared slot; the owning section's
- * keyPressed(KeyEvent) forwards the key to whichever widget is current.
+ * The label is drawn at LABEL_SCALE (same pose push/translate/scale/pop
+ * pattern used by GeneralSection's drawLabel / the screen's drawDescription)
+ * — only the label text scales, the checkbox and key box stay at their
+ * normal size/position so click regions in onClick() don't need to change.
  */
 public class LockedKeybindWidget extends AbstractWidget implements KeyListenerSlot.Listener {
 
-	private static final int COLOR_LISTENING = 0xFFE38A2D;
-	private static final int COLOR_NONE = 0xFF666666;
+	private static final int COLOR_LISTENING = 0xFFD98F3E;
+	private static final int COLOR_NONE = 0xFF8A7A6A;
 	private static final int COLOR_TEXT = 0xFFF2F2F2;
+	private static final int COLOR_BOX_BG = 0xFF1F1611;
+	private static final int COLOR_BORDER = 0xFF8B5A2B;
+	private static final int COLOR_CHECK_ON = 0xFFD98F3E;
 	private static final int CHECKBOX_SIZE = 10;
 	private static final int KEY_BOX_WIDTH = 70;
+	private static final float LABEL_SCALE = 1.25f;
 
 	private final KeyListenerSlot slot;
 	private final BooleanSupplier enabledGetter;
@@ -66,14 +64,19 @@ public class LockedKeybindWidget extends AbstractWidget implements KeyListenerSl
 		boolean listening = slot.isListening(this);
 
 		int cbY = getY() + (height - CHECKBOX_SIZE) / 2;
-		graphics.fill(getX(), cbY, getX() + CHECKBOX_SIZE, cbY + CHECKBOX_SIZE, 0xFF141414);
-		graphics.renderOutline(getX(), cbY, CHECKBOX_SIZE, CHECKBOX_SIZE, 0xFF5A5A5A);
+		graphics.fill(getX(), cbY, getX() + CHECKBOX_SIZE, cbY + CHECKBOX_SIZE, COLOR_BOX_BG);
+		graphics.renderOutline(getX(), cbY, CHECKBOX_SIZE, CHECKBOX_SIZE, COLOR_BORDER);
 		if (enabled) {
-			graphics.fill(getX() + 2, cbY + 2, getX() + CHECKBOX_SIZE - 2, cbY + CHECKBOX_SIZE - 2, 0xFF3FA34D);
+			graphics.fill(getX() + 2, cbY + 2, getX() + CHECKBOX_SIZE - 2, cbY + CHECKBOX_SIZE - 2, COLOR_CHECK_ON);
 		}
 
 		int labelX = getX() + CHECKBOX_SIZE + 6;
-		graphics.drawString(font, getMessage(), labelX, getY() + (height - 8) / 2, COLOR_TEXT, false);
+		int labelY = getY() + (int) ((height - 8 * LABEL_SCALE) / 2);
+		graphics.pose().pushMatrix();
+		graphics.pose().translate(labelX, labelY);
+		graphics.pose().scale(LABEL_SCALE, LABEL_SCALE);
+		graphics.drawString(font, getMessage(), 0, 0, COLOR_TEXT, false);
+		graphics.pose().popMatrix();
 
 		int keyBoxX = getX() + width - KEY_BOX_WIDTH;
 		int keyBoxY = getY();
@@ -82,8 +85,8 @@ public class LockedKeybindWidget extends AbstractWidget implements KeyListenerSl
 				: InputConstants.Type.KEYSYM.getOrCreate(keyCode).getDisplayName().getString());
 		int keyColor = listening ? COLOR_LISTENING : (keyCode < 0 ? COLOR_NONE : COLOR_TEXT);
 
-		graphics.fill(keyBoxX, keyBoxY, keyBoxX + KEY_BOX_WIDTH, keyBoxY + height, 0xFF1A1A1A);
-		graphics.renderOutline(keyBoxX, keyBoxY, KEY_BOX_WIDTH, height, listening ? COLOR_LISTENING : 0xFF5A5A5A);
+		graphics.fill(keyBoxX, keyBoxY, keyBoxX + KEY_BOX_WIDTH, keyBoxY + height, COLOR_BOX_BG);
+		graphics.renderOutline(keyBoxX, keyBoxY, KEY_BOX_WIDTH, height, listening ? COLOR_LISTENING : COLOR_BORDER);
 		int tw = font.width(keyText);
 		graphics.drawString(font, keyText, keyBoxX + (KEY_BOX_WIDTH - tw) / 2, getY() + (height - 8) / 2, keyColor, false);
 	}
