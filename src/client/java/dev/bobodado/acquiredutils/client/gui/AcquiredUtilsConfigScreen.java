@@ -21,21 +21,16 @@ public class AcquiredUtilsConfigScreen extends Screen {
 
     public static final int BASE_PANEL_WIDTH = 480;
     public static final int BASE_PANEL_HEIGHT = 260;
-    // Bumped from 22 -> 32 to fit the credit line under the title without
-    // cramping either line. Every other layout value (content start, footer
-    // position, etc.) derives from this at runtime, so growing it is safe —
-    // nothing else hardcodes the old 22.
     public static final int BASE_HEADER_HEIGHT = 32;
     public static final int BASE_FOOTER_HEIGHT = 26;
     public static final int BASE_SIDEBAR_WIDTH = 110;
     public static final int BASE_PADDING = 8;
     public static final int BASE_TAB_HEIGHT = 18;
 
-    // --- "Ancient Forge" theme ---
     private static final int COLOR_WHITE = 0xFFF2F2F2;
     private static final int COLOR_ACCENT = 0xFFE38A2D;
     private static final int COLOR_ACCENT_BRIGHT = 0xFFD98F3E;
-    private static final int COLOR_CREDIT = 0x99C9A876; // muted warm gray-gold, subtle watermark tone
+    private static final int COLOR_CREDIT = 0xCCE0A868;
 
     private static final int COLOR_PANEL_TOP = 0xFF32241C;
     private static final int COLOR_PANEL_BOTTOM = 0xFF1C1512;
@@ -176,14 +171,15 @@ public class AcquiredUtilsConfigScreen extends Screen {
 
         graphics.drawString(this.font, Component.literal(" v1.0.0"), afterSecond, titleY, COLOR_WHITE, false);
 
-        // Credit line, directly under the title. Change the name here if
-        // needed — everything else about this line (position, style, color)
-        // stays the same.
         Component credit = Component.literal("Interface designed by ii8we")
                 .copy().withStyle(Style.EMPTY.withItalic(true));
+        float creditScale = 0.75f;
+        int creditRawWidth = this.font.width(credit);
+        int creditRenderedWidth = (int) (creditRawWidth * creditScale);
+        int creditX = panelX + (panelWidth - creditRenderedWidth) / 2;
         graphics.pose().pushMatrix();
-        graphics.pose().translate(titleX, panelY + s(17));
-        graphics.pose().scale(0.75f, 0.75f);
+        graphics.pose().translate(creditX, panelY + s(17));
+        graphics.pose().scale(creditScale, creditScale);
         graphics.drawString(this.font, credit, 0, 0, COLOR_CREDIT, false);
         graphics.pose().popMatrix();
 
