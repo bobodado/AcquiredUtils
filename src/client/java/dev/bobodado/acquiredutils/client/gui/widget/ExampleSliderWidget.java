@@ -77,7 +77,7 @@ public class ExampleSliderWidget extends AbstractSliderButton {
     }
 
     @Override
-    protected void renderWidget(
+    public void renderWidget(
         GuiGraphics graphics,
         int mouseX,
         int mouseY,

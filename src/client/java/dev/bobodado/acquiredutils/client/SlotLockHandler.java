@@ -12,8 +12,15 @@ import net.minecraft.client.Options;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.resources.Identifier;
 
 public final class SlotLockHandler {
+	
+private static final Identifier LOCK_TEXTURE =
+    Identifier.fromNamespaceAndPath(
+        "acquiredutils",
+        "textures/gui/lock.png"
+    );
 
     private SlotLockHandler() {
     }
@@ -53,16 +60,16 @@ public final class SlotLockHandler {
 
                 int hoveredSlot = hovered.getContainerSlot();
 
-                if (keyCode == options.keyDrop.getKey().getValue()) {
+                if (options.keyDrop.matches(event)) {
                     return !isLocked(hoveredSlot);
                 }
 
-                if (keyCode == options.keySwapOffhand.getKey().getValue()) {
+                if (options.keySwapOffhand.matches(event)) {
                     return !isLocked(hoveredSlot) && !isLocked(40);
                 }
 
                 for (int i = 0; i < 9; i++) {
-                    if (keyCode == options.keyHotbarSlots[i].getKey().getValue()) {
+                    if (options.keyHotbarSlots[i].matches(event)) {
                         return !isLocked(hoveredSlot) && !isLocked(i);
                     }
                 }
@@ -147,11 +154,17 @@ public final class SlotLockHandler {
     }
 
     private static void drawPadlock(GuiGraphics graphics, int x, int y) {
-        int color = 0xFFD98F3E;
-
-        graphics.fill(x + 4, y + 6, x + 12, y + 14, color);
-        graphics.fill(x + 6, y + 2, x + 10, y + 6, color);
-        graphics.fill(x + 5, y + 3, x + 6, y + 5, color);
-        graphics.fill(x + 10, y + 3, x + 11, y + 5, color);
+        graphics.blit(
+            net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED,
+            LOCK_TEXTURE,
+            x,
+            y,
+            0.0f,
+            0.0f,
+            16,
+            16,
+            16,
+            16
+        );
     }
 }
