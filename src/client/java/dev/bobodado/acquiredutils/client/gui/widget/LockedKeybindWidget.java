@@ -17,11 +17,6 @@ import java.util.function.IntSupplier;
 
 public class LockedKeybindWidget extends AbstractWidget implements KeyListenerSlot.Listener {
 
-    private static final int COLOR_LISTENING = 0xFFD98F3E;
-    private static final int COLOR_NONE = 0xFF8A7A6A;
-    private static final int COLOR_BOX_BG = 0xFF1F1611;
-    private static final int COLOR_BORDER = 0xFF8B5A2B;
-    private static final int COLOR_CHECK_ON = 0xFFD98F3E;
     private static final int CHECKBOX_SIZE = 10;
     private static final int KEY_BOX_WIDTH = 70;
     private static final float LABEL_SCALE = 1.25f;
@@ -86,7 +81,7 @@ public class LockedKeybindWidget extends AbstractWidget implements KeyListenerSl
             cbY,
             getX() + cbSize,
             cbY + cbSize,
-            COLOR_BOX_BG
+            theme.footerBottom
         );
 
         graphics.renderOutline(
@@ -94,7 +89,7 @@ public class LockedKeybindWidget extends AbstractWidget implements KeyListenerSl
             cbY,
             cbSize,
             cbSize,
-            COLOR_BORDER
+            enabled ? theme.accentBright : theme.frameMid
         );
 
         if (enabled) {
@@ -103,7 +98,7 @@ public class LockedKeybindWidget extends AbstractWidget implements KeyListenerSl
                 cbY + 2,
                 getX() + cbSize - 2,
                 cbY + cbSize - 2,
-                COLOR_CHECK_ON
+                theme.accent
             );
         }
 
@@ -111,7 +106,7 @@ public class LockedKeybindWidget extends AbstractWidget implements KeyListenerSl
         int labelY = getY() + (int) ((height - 8 * LABEL_SCALE) / 2);
 
         graphics.pose().pushMatrix();
-        graphics.pose().translate((float) labelX, (float) labelY);
+        graphics.pose().translate(labelX, labelY);
         graphics.pose().scale(LABEL_SCALE, LABEL_SCALE);
 
         graphics.drawString(
@@ -127,7 +122,6 @@ public class LockedKeybindWidget extends AbstractWidget implements KeyListenerSl
 
         int keyBoxW = s(KEY_BOX_WIDTH);
         int keyBoxX = getX() + width - keyBoxW;
-        int keyBoxY = getY();
         int keyCode = keyGetter.getAsInt();
 
         String keyText = listening
@@ -140,23 +134,23 @@ public class LockedKeybindWidget extends AbstractWidget implements KeyListenerSl
                     .getString());
 
         int keyColor = listening
-            ? COLOR_LISTENING
-            : (keyCode < 0 ? COLOR_NONE : theme.text);
+            ? theme.accentBright
+            : (keyCode < 0 ? theme.credit : theme.text);
 
         graphics.fill(
             keyBoxX,
-            keyBoxY,
+            getY(),
             keyBoxX + keyBoxW,
-            keyBoxY + height,
-            COLOR_BOX_BG
+            getY() + height,
+            theme.footerBottom
         );
 
         graphics.renderOutline(
             keyBoxX,
-            keyBoxY,
+            getY(),
             keyBoxW,
             height,
-            listening ? COLOR_LISTENING : COLOR_BORDER
+            listening ? theme.accentBright : theme.frameMid
         );
 
         int textWidth = font.width(keyText);
@@ -172,10 +166,7 @@ public class LockedKeybindWidget extends AbstractWidget implements KeyListenerSl
     }
 
     @Override
-    public void onClick(
-        MouseButtonEvent event,
-        boolean doubleClick
-    ) {
+    public void onClick(MouseButtonEvent event, boolean doubleClick) {
         double mouseX = event.x();
         double mouseY = event.y();
 
@@ -208,12 +199,7 @@ public class LockedKeybindWidget extends AbstractWidget implements KeyListenerSl
     }
 
     @Override
-    public void updateWidgetNarration(
-        NarrationElementOutput output
-    ) {
-        output.add(
-            NarratedElementType.TITLE,
-            getMessage()
-        );
+    public void updateWidgetNarration(NarrationElementOutput output) {
+        output.add(NarratedElementType.TITLE, getMessage());
     }
 }

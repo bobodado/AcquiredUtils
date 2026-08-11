@@ -1,5 +1,7 @@
 package dev.bobodado.acquiredutils.client.gui.widget;
 
+import dev.bobodado.acquiredutils.client.gui.theme.Theme;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.network.chat.Component;
@@ -8,17 +10,20 @@ import java.util.function.Consumer;
 
 public class ExampleSliderWidget extends AbstractSliderButton {
 
-    private static final int COLOR_TRACK_BG = 0xFF1F1611;
-    private static final int COLOR_TRACK_BORDER = 0xFF8B5A2B;
-    private static final int COLOR_FILL = 0xFF6B4A2E;
-    private static final int COLOR_HANDLE = 0xFFD98F3E;
-    private static final int COLOR_HANDLE_BORDER = 0xFF1F1611;
-    private static final int COLOR_TEXT = 0xFFF2F2F2;
-    private static final int HANDLE_WIDTH = 4;
-
     private final double min;
     private final double max;
     private final Consumer<Float> onChange;
+
+    public ExampleSliderWidget(
+        int x,
+        int y,
+        int width,
+        int height,
+        float initialValue,
+        Consumer<Float> onChange
+    ) {
+        this(x, y, width, height, initialValue, 0.1f, 5.0f, onChange);
+    }
 
     public ExampleSliderWidget(
         int x,
@@ -44,23 +49,12 @@ public class ExampleSliderWidget extends AbstractSliderButton {
         this.onChange = onChange;
     }
 
-    public ExampleSliderWidget(
-        int x,
-        int y,
-        int width,
-        int height,
-        float initialValue,
-        Consumer<Float> onChange
-    ) {
-        this(x, y, width, height, initialValue, 0.1f, 5.0f, onChange);
-    }
-
     private static double toNormalized(float value, double min, double max) {
         double clamped = Math.max(min, Math.min(max, value));
         return (clamped - min) / (max - min);
     }
 
-    private float fromNormalized() {
+    private float value() {
         return (float) (min + this.value * (max - min));
     }
 
@@ -73,52 +67,73 @@ public class ExampleSliderWidget extends AbstractSliderButton {
     }
 
     @Override
-    public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    protected void updateMessage() {
+        setMessage(Component.literal(format(value(), min, max)));
+    }
+
+    @Override
+    protected void applyValue() {
+        onChange.accept(value());
+    }
+
+    @Override
+    protected void renderWidget(
+        GuiGraphics graphics,
+        int mouseX,
+        int mouseY,
+        float partialTick
+    ) {
+        Theme theme = Theme.current();
+        var font = Minecraft.getInstance().font;
+
+        int trackY = getY() + Math.max(1, height / 2 - 2);
+
         graphics.fill(
             getX(),
-            getY(),
+            trackY,
             getX() + width,
-            getY() + height,
-            COLOR_TRACK_BG
+            trackY + 4,
+            theme.footerBottom
         );
+
+        int filled = (int) (this.value * width);
+
+        if (filled > 0) {
+            graphics.fill(
+                getX(),
+                trackY,
+                getX() + filled,
+                trackY + 4,
+                theme.accent
+            );
+        }
 
         graphics.renderOutline(
             getX(),
             getY(),
             width,
             height,
-            COLOR_TRACK_BORDER
+            theme.frameMid
         );
 
-        int handleX = getX() + (int) (this.value * (width - HANDLE_WIDTH));
-
-        if (handleX > getX()) {
-            graphics.fill(
-                getX() + 1,
-                getY() + 1,
-                handleX,
-                getY() + height - 1,
-                COLOR_FILL
-            );
-        }
+        int handleX = getX() + (int) (this.value * (width - 6));
 
         graphics.fill(
             handleX,
-            getY(),
-            handleX + HANDLE_WIDTH,
-            getY() + height,
-            COLOR_HANDLE
+            getY() + 1,
+            handleX + 6,
+            getY() + height - 1,
+            theme.accentBright
         );
 
         graphics.renderOutline(
             handleX,
-            getY(),
-            HANDLE_WIDTH,
-            height,
-            COLOR_HANDLE_BORDER
+            getY() + 1,
+            6,
+            height - 2,
+            theme.frameOuter
         );
 
-        var font = net.minecraft.client.Minecraft.getInstance().font;
         int textWidth = font.width(getMessage());
 
         graphics.drawString(
@@ -126,18 +141,8 @@ public class ExampleSliderWidget extends AbstractSliderButton {
             getMessage(),
             getX() + (width - textWidth) / 2,
             getY() + (height - 8) / 2,
-            COLOR_TEXT,
+            theme.text,
             false
         );
-    }
-
-    @Override
-    protected void updateMessage() {
-        setMessage(Component.literal(format(fromNormalized(), min, max)));
-    }
-
-    @Override
-    protected void applyValue() {
-        onChange.accept(fromNormalized());
     }
 }

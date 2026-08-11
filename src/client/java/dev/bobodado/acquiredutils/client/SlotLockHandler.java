@@ -1,5 +1,6 @@
 package dev.bobodado.acquiredutils.client;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dev.bobodado.acquiredutils.AcquiredUtils;
 import dev.bobodado.acquiredutils.config.AcquiredUtilsConfig;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -37,10 +38,10 @@ public final class SlotLockHandler {
             ScreenKeyboardEvents.allowKeyPress(screen).register((s, event) -> {
                 if (!AcquiredUtilsConfig.get().slotLockEnabled) return true;
 
+                int keyCode = InputConstants.getKey(event).getValue();
                 Options options = Minecraft.getInstance().options;
 
-                if (event.key() == AcquiredUtilsConfig.get().slotLockKey
-                    && AcquiredUtilsConfig.get().slotLockKey >= 0) {
+                if (keyCode == AcquiredUtilsConfig.get().slotLockKey && keyCode >= 0) {
                     toggleHoveredSlot(containerScreen);
                     return false;
                 }
@@ -52,19 +53,17 @@ public final class SlotLockHandler {
 
                 int hoveredSlot = hovered.getContainerSlot();
 
-                if (options.keyDrop.matches(event)) {
+                if (keyCode == options.keyDrop.getKey().getValue()) {
                     return !isLocked(hoveredSlot);
                 }
 
-                if (options.keySwapOffhand.matches(event)) {
-                    if (isLocked(hoveredSlot) || isLocked(40)) return false;
-                    return true;
+                if (keyCode == options.keySwapOffhand.getKey().getValue()) {
+                    return !isLocked(hoveredSlot) && !isLocked(40);
                 }
 
                 for (int i = 0; i < 9; i++) {
-                    if (options.keyHotbarSlots[i].matches(event)) {
-                        if (isLocked(hoveredSlot) || isLocked(i)) return false;
-                        return true;
+                    if (keyCode == options.keyHotbarSlots[i].getKey().getValue()) {
+                        return !isLocked(hoveredSlot) && !isLocked(i);
                     }
                 }
 
@@ -79,8 +78,7 @@ public final class SlotLockHandler {
 
         ClientTickEvents.START_CLIENT_TICK.register(client -> {
             if (!AcquiredUtilsConfig.get().slotLockEnabled) return;
-            if (client.player == null) return;
-            if (client.screen != null) return;
+            if (client.player == null || client.screen != null) return;
 
             int selectedSlot = client.player.getInventory().getSelectedSlot();
             if (!isLocked(selectedSlot)) return;
@@ -124,7 +122,10 @@ public final class SlotLockHandler {
         return AcquiredUtilsConfig.get().lockedSlots.contains(containerSlotIndex);
     }
 
-    private static void renderLockedSlots(GuiGraphics graphics, AbstractContainerScreen<?> screen) {
+    private static void renderLockedSlots(
+        GuiGraphics graphics,
+        AbstractContainerScreen<?> screen
+    ) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
 
@@ -136,9 +137,11 @@ public final class SlotLockHandler {
                 && slot.isActive()
                 && isLocked(slot.getContainerSlot())) {
 
-                int x = left + slot.x;
-                int y = top + slot.y;
-                drawPadlock(graphics, x, y);
+                drawPadlock(
+                    graphics,
+                    left + slot.x,
+                    top + slot.y
+                );
             }
         }
     }

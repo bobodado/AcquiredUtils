@@ -1,5 +1,6 @@
 package dev.bobodado.acquiredutils.client.gui.widget;
 
+import dev.bobodado.acquiredutils.client.gui.theme.Theme;
 import dev.bobodado.acquiredutils.config.AcquiredUtilsConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -14,17 +15,12 @@ import java.util.function.Consumer;
 
 public class DropdownWidget extends AbstractWidget {
 
-    private static final int COLOR_FIELD_BG = 0xFF1F1611;
-    private static final int COLOR_BORDER = 0xFF8B5A2B;
-    private static final int COLOR_OPEN_BG = 0xFF241A14;
-    private static final int COLOR_TEXT = 0xFFF2F2F2;
-    private static final int COLOR_SELECTION_BG = 0xFF6B4A2E;
     private static final int ROW_HEIGHT = 12;
 
     private final List<Component> options;
     private final Consumer<Integer> onSelect;
     private int selectedIndex;
-    private boolean open = false;
+    private boolean open;
 
     public DropdownWidget(
         int x,
@@ -60,12 +56,19 @@ public class DropdownWidget extends AbstractWidget {
         int mouseY,
         float partialTick
     ) {
+        Theme theme = Theme.current();
+        var font = Minecraft.getInstance().font;
+
+        int background = isHovered()
+            ? theme.headerTop
+            : theme.headerBottom;
+
         graphics.fill(
             getX(),
             getY(),
             getX() + width,
             getY() + height,
-            COLOR_FIELD_BG
+            background
         );
 
         graphics.renderOutline(
@@ -73,24 +76,24 @@ public class DropdownWidget extends AbstractWidget {
             getY(),
             width,
             height,
-            COLOR_BORDER
+            isHovered() ? theme.accentBright : theme.frameMid
         );
 
         graphics.drawString(
-            Minecraft.getInstance().font,
+            font,
             options.get(selectedIndex),
             getX() + 4,
             getY() + (height - 8) / 2,
-            COLOR_TEXT,
+            theme.text,
             false
         );
 
         graphics.drawString(
-            Minecraft.getInstance().font,
-            "\u25BE",
+            font,
+            "▾",
             getX() + width - 10,
             getY() + (height - 8) / 2,
-            COLOR_TEXT,
+            theme.accentBright,
             false
         );
     }
@@ -103,15 +106,18 @@ public class DropdownWidget extends AbstractWidget {
     ) {
         if (!open) return;
 
+        Theme theme = Theme.current();
+
         int listY = getY() + height;
-        int listHeight = options.size() * s(ROW_HEIGHT);
+        int rowHeight = s(ROW_HEIGHT);
+        int listHeight = options.size() * rowHeight;
 
         graphics.fill(
             getX(),
             listY,
             getX() + width,
             listY + listHeight,
-            COLOR_OPEN_BG
+            theme.panelBottom
         );
 
         graphics.renderOutline(
@@ -119,19 +125,19 @@ public class DropdownWidget extends AbstractWidget {
             listY,
             width,
             listHeight,
-            COLOR_BORDER
+            theme.accentBright
         );
 
         for (int i = 0; i < options.size(); i++) {
-            int rowY = listY + i * s(ROW_HEIGHT);
+            int rowY = listY + i * rowHeight;
 
             if (i == selectedIndex) {
                 graphics.fill(
                     getX() + 1,
                     rowY,
                     getX() + width - 1,
-                    rowY + s(ROW_HEIGHT),
-                    COLOR_SELECTION_BG
+                    rowY + rowHeight,
+                    theme.tabActiveBg
                 );
             }
 
@@ -140,7 +146,7 @@ public class DropdownWidget extends AbstractWidget {
                 options.get(i),
                 getX() + 4,
                 rowY + 2,
-                COLOR_TEXT,
+                theme.text,
                 false
             );
         }
@@ -161,8 +167,7 @@ public class DropdownWidget extends AbstractWidget {
                 && mouseY >= listY
                 && mouseY < listY + listHeight) {
 
-                int relativeY = (int) mouseY - listY;
-                int index = relativeY / rowHeight;
+                int index = ((int) mouseY - listY) / rowHeight;
 
                 if (index >= 0 && index < options.size()) {
                     selectedIndex = index;
@@ -184,7 +189,9 @@ public class DropdownWidget extends AbstractWidget {
     }
 
     public boolean isOverExpandedArea(double mouseX, double mouseY) {
-        if (!open) return isMouseOver(mouseX, mouseY);
+        if (!open) {
+            return isMouseOver(mouseX, mouseY);
+        }
 
         int listY = getY() + height;
         int listHeight = options.size() * s(ROW_HEIGHT);
@@ -197,6 +204,9 @@ public class DropdownWidget extends AbstractWidget {
 
     @Override
     public void updateWidgetNarration(NarrationElementOutput output) {
-        output.add(NarratedElementType.TITLE, options.get(selectedIndex));
+        output.add(
+            NarratedElementType.TITLE,
+            options.get(selectedIndex)
+        );
     }
 }
