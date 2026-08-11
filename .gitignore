@@ -1,18 +1,11 @@
-# Gradle
 .gradle/
 build/
-out/
-
-# IDE
-.idea/
+run/
 *.iml
-.vscode/
+*.ipr
+*.iws
+.idea/
 .classpath
 .project
 .settings/
-
-# OS
-.DS_Store
-
-# Run directory (created by Loom when you run the game)
-run/
+bin/
