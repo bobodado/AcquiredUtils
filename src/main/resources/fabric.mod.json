@@ -4,6 +4,7 @@
 	"version": "${version}",
 	"name": "AcquiredUtils",
 	"description": "Utility mod with an in-game settings GUI.",
+	"accessWidener": "acquiredutils.accesswidener",
 	"authors": [
 		"bobodado"
 	],
