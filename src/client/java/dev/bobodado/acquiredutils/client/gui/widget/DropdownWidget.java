@@ -6,6 +6,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarratedElementType;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
 import java.util.List;
@@ -25,8 +26,15 @@ public class DropdownWidget extends AbstractWidget {
     private int selectedIndex;
     private boolean open = false;
 
-    public DropdownWidget(int x, int y, int width, int height, List<Component> options,
-                          int initialSelectedIndex, Consumer<Integer> onSelect) {
+    public DropdownWidget(
+        int x,
+        int y,
+        int width,
+        int height,
+        List<Component> options,
+        int initialSelectedIndex,
+        Consumer<Integer> onSelect
+    ) {
         super(x, y, width, height, options.get(initialSelectedIndex));
         this.options = options;
         this.selectedIndex = initialSelectedIndex;
@@ -46,68 +54,145 @@ public class DropdownWidget extends AbstractWidget {
     }
 
     @Override
-    protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.fill(getX(), getY(), getX() + width, getY() + height, COLOR_FIELD_BG);
-        graphics.renderOutline(getX(), getY(), width, height, COLOR_BORDER);
-        graphics.drawString(Minecraft.getInstance().font,
-            options.get(selectedIndex), getX() + 4, getY() + (height - 8) / 2, COLOR_TEXT, false);
-        graphics.drawString(Minecraft.getInstance().font,
-            "\u25BE", getX() + width - 10, getY() + (height - 8) / 2, COLOR_TEXT, false);
+    protected void renderWidget(
+        GuiGraphics graphics,
+        int mouseX,
+        int mouseY,
+        float partialTick
+    ) {
+        graphics.fill(
+            getX(),
+            getY(),
+            getX() + width,
+            getY() + height,
+            COLOR_FIELD_BG
+        );
+
+        graphics.renderOutline(
+            getX(),
+            getY(),
+            width,
+            height,
+            COLOR_BORDER
+        );
+
+        graphics.drawString(
+            Minecraft.getInstance().font,
+            options.get(selectedIndex),
+            getX() + 4,
+            getY() + (height - 8) / 2,
+            COLOR_TEXT,
+            false
+        );
+
+        graphics.drawString(
+            Minecraft.getInstance().font,
+            "\u25BE",
+            getX() + width - 10,
+            getY() + (height - 8) / 2,
+            COLOR_TEXT,
+            false
+        );
     }
 
-    public void renderOverlay(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    public void renderOverlay(
+        GuiGraphics graphics,
+        int mouseX,
+        int mouseY,
+        float partialTick
+    ) {
         if (!open) return;
+
         int listY = getY() + height;
         int listHeight = options.size() * s(ROW_HEIGHT);
-        graphics.fill(getX(), listY, getX() + width, listY + listHeight, COLOR_OPEN_BG);
-        graphics.renderOutline(getX(), listY, width, listHeight, COLOR_BORDER);
+
+        graphics.fill(
+            getX(),
+            listY,
+            getX() + width,
+            listY + listHeight,
+            COLOR_OPEN_BG
+        );
+
+        graphics.renderOutline(
+            getX(),
+            listY,
+            width,
+            listHeight,
+            COLOR_BORDER
+        );
 
         for (int i = 0; i < options.size(); i++) {
             int rowY = listY + i * s(ROW_HEIGHT);
+
             if (i == selectedIndex) {
-                graphics.fill(getX() + 1, rowY, getX() + width - 1, rowY + s(ROW_HEIGHT), COLOR_SELECTION_BG);
+                graphics.fill(
+                    getX() + 1,
+                    rowY,
+                    getX() + width - 1,
+                    rowY + s(ROW_HEIGHT),
+                    COLOR_SELECTION_BG
+                );
             }
-            graphics.drawString(Minecraft.getInstance().font,
-                options.get(i), getX() + 4, rowY + 2, COLOR_TEXT, false);
+
+            graphics.drawString(
+                Minecraft.getInstance().font,
+                options.get(i),
+                getX() + 4,
+                rowY + 2,
+                COLOR_TEXT,
+                false
+            );
         }
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public void onClick(MouseButtonEvent event, boolean doubleClick) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+
         if (open) {
             int listY = getY() + height;
-            int listHeight = options.size() * s(ROW_HEIGHT);
+            int rowHeight = s(ROW_HEIGHT);
+            int listHeight = options.size() * rowHeight;
 
-            if (mouseX >= getX() && mouseX < getX() + width
-                && mouseY >= listY && mouseY < listY + listHeight) {
+            if (mouseX >= getX()
+                && mouseX < getX() + width
+                && mouseY >= listY
+                && mouseY < listY + listHeight) {
+
                 int relativeY = (int) mouseY - listY;
-                int index = relativeY / s(ROW_HEIGHT);
+                int index = relativeY / rowHeight;
+
                 if (index >= 0 && index < options.size()) {
                     selectedIndex = index;
                     setMessage(options.get(index));
                     onSelect.accept(index);
                 }
+
                 open = false;
-                return true;
+                return;
             }
 
             open = false;
-            return isMouseOver(mouseX, mouseY);
-        } else {
-            if (isMouseOver(mouseX, mouseY)) {
-                open = true;
-                return true;
-            }
+            return;
         }
-        return false;
+
+        if (isMouseOver(mouseX, mouseY)) {
+            open = true;
+        }
     }
 
     public boolean isOverExpandedArea(double mouseX, double mouseY) {
         if (!open) return isMouseOver(mouseX, mouseY);
+
         int listY = getY() + height;
         int listHeight = options.size() * s(ROW_HEIGHT);
-        return mouseX >= getX() && mouseX < getX() + width
-            && mouseY >= listY && mouseY < listY + listHeight;
+
+        return mouseX >= getX()
+            && mouseX < getX() + width
+            && mouseY >= listY
+            && mouseY < listY + listHeight;
     }
 
     @Override

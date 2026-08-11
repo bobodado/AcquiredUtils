@@ -1,117 +1,143 @@
 package dev.bobodado.acquiredutils.client.gui.widget;
 
-import dev.bobodado.acquiredutils.config.AcquiredUtilsConfig;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.AbstractWidget;
-import net.minecraft.client.gui.narration.NarratedElementType;
-import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.network.chat.Component;
 
-import java.util.List;
 import java.util.function.Consumer;
 
-public class DropdownWidget extends AbstractWidget {
+public class ExampleSliderWidget extends AbstractSliderButton {
 
-    private static final int COLOR_FIELD_BG = 0xFF1F1611;
-    private static final int COLOR_BORDER = 0xFF8B5A2B;
-    private static final int COLOR_OPEN_BG = 0xFF241A14;
+    private static final int COLOR_TRACK_BG = 0xFF1F1611;
+    private static final int COLOR_TRACK_BORDER = 0xFF8B5A2B;
+    private static final int COLOR_FILL = 0xFF6B4A2E;
+    private static final int COLOR_HANDLE = 0xFFD98F3E;
+    private static final int COLOR_HANDLE_BORDER = 0xFF1F1611;
     private static final int COLOR_TEXT = 0xFFF2F2F2;
-    private static final int COLOR_SELECTION_BG = 0xFF6B4A2E;
-    private static final int ROW_HEIGHT = 12;
+    private static final int HANDLE_WIDTH = 4;
 
-    private final List<Component> options;
-    private final Consumer<Integer> onSelect;
-    private int selectedIndex;
-    private boolean open = false;
+    private final double min;
+    private final double max;
+    private final Consumer<Float> onChange;
 
-    public DropdownWidget(int x, int y, int width, int height, List<Component> options,
-                          int initialSelectedIndex, Consumer<Integer> onSelect) {
-        super(x, y, width, height, options.get(initialSelectedIndex));
-        this.options = options;
-        this.selectedIndex = initialSelectedIndex;
-        this.onSelect = onSelect;
+    public ExampleSliderWidget(
+        int x,
+        int y,
+        int width,
+        int height,
+        float initialValue,
+        float min,
+        float max,
+        Consumer<Float> onChange
+    ) {
+        super(
+            x,
+            y,
+            width,
+            height,
+            Component.literal(format(initialValue, min, max)),
+            toNormalized(initialValue, min, max)
+        );
+
+        this.min = min;
+        this.max = max;
+        this.onChange = onChange;
     }
 
-    public boolean isOpen() {
-        return open;
+    public ExampleSliderWidget(
+        int x,
+        int y,
+        int width,
+        int height,
+        float initialValue,
+        Consumer<Float> onChange
+    ) {
+        this(x, y, width, height, initialValue, 0.1f, 5.0f, onChange);
     }
 
-    public void setOpen(boolean open) {
-        this.open = open;
+    private static double toNormalized(float value, double min, double max) {
+        double clamped = Math.max(min, Math.min(max, value));
+        return (clamped - min) / (max - min);
     }
 
-    private int s(int base) {
-        return (int) (base * AcquiredUtilsConfig.get().menuScale);
+    private float fromNormalized() {
+        return (float) (min + this.value * (max - min));
     }
 
-    @Override
-    protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.fill(getX(), getY(), getX() + width, getY() + height, COLOR_FIELD_BG);
-        graphics.renderOutline(getX(), getY(), width, height, COLOR_BORDER);
-        graphics.drawString(Minecraft.getInstance().font,
-            options.get(selectedIndex), getX() + 4, getY() + (height - 8) / 2, COLOR_TEXT, false);
-        graphics.drawString(Minecraft.getInstance().font,
-            "\u25BE", getX() + width - 10, getY() + (height - 8) / 2, COLOR_TEXT, false);
-    }
-
-    public void renderOverlay(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        if (!open) return;
-        int listY = getY() + height;
-        int listHeight = options.size() * s(ROW_HEIGHT);
-        graphics.fill(getX(), listY, getX() + width, listY + listHeight, COLOR_OPEN_BG);
-        graphics.renderOutline(getX(), listY, width, listHeight, COLOR_BORDER);
-
-        for (int i = 0; i < options.size(); i++) {
-            int rowY = listY + i * s(ROW_HEIGHT);
-            if (i == selectedIndex) {
-                graphics.fill(getX() + 1, rowY, getX() + width - 1, rowY + s(ROW_HEIGHT), COLOR_SELECTION_BG);
-            }
-            graphics.drawString(Minecraft.getInstance().font,
-                options.get(i), getX() + 4, rowY + 2, COLOR_TEXT, false);
+    private static String format(float value, double min, double max) {
+        if (min == 0.5 && max == 2.0) {
+            return String.format("%.2f", value);
         }
+
+        return String.format("%.1f", value);
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (open) {
-            int listY = getY() + height;
-            int listHeight = options.size() * s(ROW_HEIGHT);
+    public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        graphics.fill(
+            getX(),
+            getY(),
+            getX() + width,
+            getY() + height,
+            COLOR_TRACK_BG
+        );
 
-            if (mouseX >= getX() && mouseX < getX() + width
-                && mouseY >= listY && mouseY < listY + listHeight) {
-                int relativeY = (int) mouseY - listY;
-                int index = relativeY / s(ROW_HEIGHT);
-                if (index >= 0 && index < options.size()) {
-                    selectedIndex = index;
-                    setMessage(options.get(index));
-                    onSelect.accept(index);
-                }
-                open = false;
-                return true;
-            }
+        graphics.renderOutline(
+            getX(),
+            getY(),
+            width,
+            height,
+            COLOR_TRACK_BORDER
+        );
 
-            open = false;
-            return isMouseOver(mouseX, mouseY);
-        } else {
-            if (isMouseOver(mouseX, mouseY)) {
-                open = true;
-                return true;
-            }
+        int handleX = getX() + (int) (this.value * (width - HANDLE_WIDTH));
+
+        if (handleX > getX()) {
+            graphics.fill(
+                getX() + 1,
+                getY() + 1,
+                handleX,
+                getY() + height - 1,
+                COLOR_FILL
+            );
         }
-        return false;
-    }
 
-    public boolean isOverExpandedArea(double mouseX, double mouseY) {
-        if (!open) return isMouseOver(mouseX, mouseY);
-        int listY = getY() + height;
-        int listHeight = options.size() * s(ROW_HEIGHT);
-        return mouseX >= getX() && mouseX < getX() + width
-            && mouseY >= listY && mouseY < listY + listHeight;
+        graphics.fill(
+            handleX,
+            getY(),
+            handleX + HANDLE_WIDTH,
+            getY() + height,
+            COLOR_HANDLE
+        );
+
+        graphics.renderOutline(
+            handleX,
+            getY(),
+            HANDLE_WIDTH,
+            height,
+            COLOR_HANDLE_BORDER
+        );
+
+        var font = net.minecraft.client.Minecraft.getInstance().font;
+        int textWidth = font.width(getMessage());
+
+        graphics.drawString(
+            font,
+            getMessage(),
+            getX() + (width - textWidth) / 2,
+            getY() + (height - 8) / 2,
+            COLOR_TEXT,
+            false
+        );
     }
 
     @Override
-    public void updateWidgetNarration(NarrationElementOutput output) {
-        output.add(NarratedElementType.TITLE, options.get(selectedIndex));
+    protected void updateMessage() {
+        setMessage(Component.literal(format(fromNormalized(), min, max)));
+    }
+
+    @Override
+    protected void applyValue() {
+        onChange.accept(fromNormalized());
     }
 }
