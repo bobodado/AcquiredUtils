@@ -1,14 +1,15 @@
 package dev.bobodado.acquiredutils.client.gui;
 
 import dev.bobodado.acquiredutils.AcquiredUtils;
+import dev.bobodado.acquiredutils.client.gui.section.GuiRow;
 import dev.bobodado.acquiredutils.client.gui.section.ModSection;
+import dev.bobodado.acquiredutils.client.gui.theme.Theme;
+import dev.bobodado.acquiredutils.client.gui.widget.DropdownWidget;
 import dev.bobodado.acquiredutils.client.gui.widget.ThemedButtonWidget;
 import dev.bobodado.acquiredutils.config.AcquiredUtilsConfig;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 
@@ -27,25 +28,6 @@ public class AcquiredUtilsConfigScreen extends Screen {
     public static final int BASE_PADDING = 8;
     public static final int BASE_TAB_HEIGHT = 18;
 
-    private static final int COLOR_WHITE = 0xFFF2F2F2;
-    private static final int COLOR_ACCENT = 0xFFE38A2D;
-    private static final int COLOR_ACCENT_BRIGHT = 0xFFD98F3E;
-    private static final int COLOR_CREDIT = 0xCCE0A868;
-
-    private static final int COLOR_PANEL_TOP = 0xFF32241C;
-    private static final int COLOR_PANEL_BOTTOM = 0xFF1C1512;
-    private static final int COLOR_FRAME_OUTER = 0xFF140D08;
-    private static final int COLOR_FRAME_MID = 0xFF8B5A2B;
-    private static final int COLOR_HEADER_TOP = 0xFF3A2A1E;
-    private static final int COLOR_HEADER_BOTTOM = 0xFF1F1611;
-    private static final int COLOR_SIDEBAR_TOP = 0xFF241A14;
-    private static final int COLOR_SIDEBAR_BOTTOM = 0xFF1A130F;
-    private static final int COLOR_FOOTER_TOP = 0xFF1F1611;
-    private static final int COLOR_FOOTER_BOTTOM = 0xFF140E0A;
-    private static final int COLOR_DIVIDER = 0x40D98F3E;
-    private static final int COLOR_SHADOW = 0x60000000;
-    private static final int COLOR_TAB_ACTIVE_BG = 0x33D98F3E;
-
     private final Screen parent;
 
     private float menuScale;
@@ -59,6 +41,11 @@ public class AcquiredUtilsConfigScreen extends Screen {
 
     private final List<TabPos> tabPositions = new ArrayList<>();
     private record TabPos(int x, int y, int w, int h, String id) {}
+
+    private final List<StoredText> storedTexts = new ArrayList<>();
+    private record StoredText(String translationKey, int x, int y, boolean isLabel) {}
+
+    private boolean needsRebuild = false;
 
     public AcquiredUtilsConfigScreen(Screen parent) {
         super(Component.translatable("acquiredutils.gui.title"));
@@ -88,12 +75,24 @@ public class AcquiredUtilsConfigScreen extends Screen {
         addRenderableWidget(widget);
     }
 
-    public void rebuild() {
-        init();
+    public void scheduleRebuild() {
+        needsRebuild = true;
+    }
+
+    @Override
+    public void tick() {
+        if (needsRebuild) {
+            needsRebuild = false;
+            init();
+        }
     }
 
     private void computeLayout() {
         this.menuScale = AcquiredUtilsConfig.get().menuScale;
+        float maxScaleX = (float) this.width / BASE_PANEL_WIDTH;
+        float maxScaleY = (float) this.height / BASE_PANEL_HEIGHT;
+        this.menuScale = Math.max(0.5f, Math.min(this.menuScale, Math.min(maxScaleX, maxScaleY)));
+
         this.panelWidth = s(BASE_PANEL_WIDTH);
         this.panelHeight = s(BASE_PANEL_HEIGHT);
         this.headerHeight = s(BASE_HEADER_HEIGHT);
@@ -111,25 +110,18 @@ public class AcquiredUtilsConfigScreen extends Screen {
         clearWidgets();
         sectionWidgets.clear();
         tabPositions.clear();
+        storedTexts.clear();
 
         buildHeader();
         buildSidebarTabs();
-
-        ModSection active = sections.get(activeSectionId);
-        if (active != null) {
-            int cx = panelX + sidebarWidth + padding;
-            int cy = panelY + headerHeight + padding;
-            int cw = panelWidth - sidebarWidth - padding * 2;
-            int ch = panelHeight - headerHeight - footerHeight - padding * 2;
-            active.buildContent(cx, cy, cw, ch);
-        }
+        buildContent();
     }
 
     private void buildHeader() {
         int closeSize = s(12);
         addRenderableWidget(new ThemedButtonWidget(
-                panelX + panelWidth - closeSize - padding, panelY + padding, closeSize, closeSize,
-                Component.literal("X"), this::onClose));
+            panelX + panelWidth - closeSize - padding, panelY + padding, closeSize, closeSize,
+            Component.literal("X"), this::onClose));
     }
 
     private void buildSidebarTabs() {
@@ -144,8 +136,39 @@ public class AcquiredUtilsConfigScreen extends Screen {
             tabPositions.add(new TabPos(tabX, y, tabWidth, tabHeight, id));
 
             addRenderableWidget(new ThemedButtonWidget(tabX, y, tabWidth, tabHeight,
-                    section.getDisplayName(), () -> switchTab(id), true));
+                section.getDisplayName(), () -> switchTab(id), true));
             i++;
+        }
+    }
+
+    private void buildContent() {
+        ModSection active = sections.get(activeSectionId);
+        if (active == null) return;
+
+        int contentX = panelX + sidebarWidth + padding;
+        int contentY = panelY + headerHeight + padding;
+        int contentW = panelWidth - sidebarWidth - padding * 2;
+        int contentH = panelHeight - headerHeight - footerHeight - padding * 2;
+
+        List<GuiRow> rows = active.getRows();
+        int rowY = contentY;
+
+        for (GuiRow row : rows) {
+            int controlW = row.controlWidth() < 0 ? contentW : s(row.controlWidth());
+            int controlH = s(row.controlHeight());
+            int controlX = contentX + contentW - controlW;
+
+            AbstractWidget widget = row.factory().create(controlX, rowY, controlW, controlH);
+            addSectionWidget(widget);
+
+            if (row.labelKey() != null) {
+                storedTexts.add(new StoredText(row.labelKey(), contentX, rowY, true));
+            }
+            if (row.descKey() != null) {
+                storedTexts.add(new StoredText(row.descKey(), contentX, rowY + s(row.descOffsetY()), false));
+            }
+
+            rowY += s(row.rowSpacing());
         }
     }
 
@@ -158,133 +181,148 @@ public class AcquiredUtilsConfigScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        drawPanelChrome(graphics);
+        Theme theme = Theme.current();
+
+        drawPanelChrome(graphics, theme);
 
         int titleX = panelX + padding;
         int titleY = panelY + s(6);
-        graphics.drawString(this.font, Component.literal("MOD SETTINGS: "), titleX, titleY, COLOR_WHITE, false);
+        graphics.drawString(this.font, Component.literal("MOD SETTINGS: "), titleX, titleY, theme.text, false);
         int afterFirst = titleX + this.font.width("MOD SETTINGS: ");
 
         Component boldName = Component.literal("AcquiredUtils").copy().withStyle(Style.EMPTY.withBold(true));
-        graphics.drawString(this.font, boldName, afterFirst, titleY, COLOR_ACCENT, false);
+        graphics.drawString(this.font, boldName, afterFirst, titleY, theme.accent, false);
         int afterSecond = afterFirst + this.font.width(boldName);
 
-        graphics.drawString(this.font, Component.literal(" v1.0.0"), afterSecond, titleY, COLOR_WHITE, false);
+        graphics.drawString(this.font, Component.literal(" v1.0.0"), afterSecond, titleY, theme.text, false);
 
         Component credit = Component.literal("Interface designed by ii8we")
-                .copy().withStyle(Style.EMPTY.withItalic(true));
+            .copy().withStyle(Style.EMPTY.withItalic(true));
         float creditScale = 0.75f;
         int creditRawWidth = this.font.width(credit);
         int creditRenderedWidth = (int) (creditRawWidth * creditScale);
         int creditX = panelX + (panelWidth - creditRenderedWidth) / 2;
-        graphics.pose().pushMatrix();
+        graphics.pose().pushPose();
         graphics.pose().translate(creditX, panelY + s(17));
         graphics.pose().scale(creditScale, creditScale);
-        graphics.drawString(this.font, credit, 0, 0, COLOR_CREDIT, false);
-        graphics.pose().popMatrix();
+        graphics.drawString(this.font, credit, 0, 0, theme.credit, false);
+        graphics.pose().popPose();
 
         int underlineY = panelY + headerHeight - 1;
-        graphics.fill(panelX, underlineY, panelX + panelWidth, underlineY + 1, COLOR_DIVIDER);
+        graphics.fill(panelX, underlineY, panelX + panelWidth, underlineY + 1, theme.divider);
 
         graphics.fill(panelX + sidebarWidth, panelY + headerHeight,
-                panelX + sidebarWidth + 1, panelY + panelHeight - footerHeight, COLOR_DIVIDER);
+            panelX + sidebarWidth + 1, panelY + panelHeight - footerHeight, theme.divider);
+
+        int contentX = panelX + sidebarWidth + padding;
+        int contentY = panelY + headerHeight + padding;
+        int contentW = panelWidth - sidebarWidth - padding * 2;
+        int contentH = panelHeight - headerHeight - footerHeight - padding * 2;
 
         ModSection active = sections.get(activeSectionId);
         if (active != null) {
-            int cx = panelX + sidebarWidth + padding;
-            int cy = panelY + headerHeight + padding;
-
-            active.render(graphics, mouseX, mouseY, partialTick,
-                    cx, cy, panelWidth - sidebarWidth - padding * 2,
-                    panelHeight - headerHeight - footerHeight - padding * 2);
+            graphics.enableScissor(contentX, contentY, contentX + contentW, contentY + contentH);
+            active.render(graphics, mouseX, mouseY, partialTick, contentX, contentY, contentW, contentH);
+            graphics.disableScissor();
         }
 
         super.render(graphics, mouseX, mouseY, partialTick);
 
+        graphics.enableScissor(contentX, contentY, contentX + contentW, contentY + contentH);
+        for (StoredText st : storedTexts) {
+            if (st.isLabel()) {
+                drawLabel(graphics, Component.translatable(st.translationKey()), st.x(), st.y());
+            } else {
+                drawDescription(graphics, st.translationKey(), st.x(), st.y());
+            }
+        }
+        graphics.disableScissor();
+
         for (TabPos tab : tabPositions) {
             if (tab.id().equals(activeSectionId)) {
-                graphics.fill(tab.x(), tab.y(), tab.x() + tab.w(), tab.y() + tab.h(), COLOR_TAB_ACTIVE_BG);
+                graphics.fill(tab.x(), tab.y(), tab.x() + tab.w(), tab.y() + tab.h(), theme.tabActiveBg);
                 int edgeW = Math.max(1, s(2));
-                graphics.fill(tab.x(), tab.y(), tab.x() + edgeW, tab.y() + tab.h(), COLOR_ACCENT_BRIGHT);
+                graphics.fill(tab.x(), tab.y(), tab.x() + edgeW, tab.y() + tab.h(), theme.accentBright);
+            }
+        }
+
+        for (AbstractWidget w : sectionWidgets) {
+            if (w instanceof DropdownWidget d && d.isOpen()) {
+                d.renderOverlay(graphics, mouseX, mouseY, partialTick);
             }
         }
     }
 
-    private void drawPanelChrome(GuiGraphics graphics) {
+    private void drawPanelChrome(GuiGraphics graphics, Theme theme) {
         int ft = Math.max(1, s(4));
 
         int shadowOffset = Math.max(1, s(3));
         graphics.fill(panelX - ft + shadowOffset, panelY - ft + shadowOffset,
-                panelX + panelWidth + ft + shadowOffset, panelY + panelHeight + ft + shadowOffset, COLOR_SHADOW);
+            panelX + panelWidth + ft + shadowOffset, panelY + panelHeight + ft + shadowOffset, theme.shadow);
 
-        fillVerticalGradient(graphics, panelX, panelY, panelX + panelWidth, panelY + panelHeight,
-                COLOR_PANEL_TOP, COLOR_PANEL_BOTTOM);
+        graphics.fillGradient(panelX, panelY, panelX + panelWidth, panelY + panelHeight,
+            theme.panelTop, theme.panelBottom);
 
-        graphics.renderOutline(panelX - ft, panelY - ft, panelWidth + ft * 2, panelHeight + ft * 2, COLOR_FRAME_OUTER);
-        graphics.renderOutline(panelX - ft + 1, panelY - ft + 1, panelWidth + ft * 2 - 2, panelHeight + ft * 2 - 2, COLOR_FRAME_MID);
-        graphics.renderOutline(panelX - 1, panelY - 1, panelWidth + 2, panelHeight + 2, COLOR_ACCENT_BRIGHT);
+        graphics.renderOutline(panelX - ft, panelY - ft, panelWidth + ft * 2, panelHeight + ft * 2, theme.frameOuter);
+        graphics.renderOutline(panelX - ft + 1, panelY - ft + 1, panelWidth + ft * 2 - 2, panelHeight + ft * 2 - 2, theme.frameMid);
+        graphics.renderOutline(panelX - 1, panelY - 1, panelWidth + 2, panelHeight + 2, theme.frameAccent);
 
-        drawCornerAccents(graphics, panelX - ft, panelY - ft, panelWidth + ft * 2, panelHeight + ft * 2);
+        drawCornerAccents(graphics, panelX - ft, panelY - ft, panelWidth + ft * 2, panelHeight + ft * 2, theme);
 
-        fillVerticalGradient(graphics, panelX, panelY, panelX + panelWidth, panelY + headerHeight,
-                COLOR_HEADER_TOP, COLOR_HEADER_BOTTOM);
-        fillVerticalGradient(graphics, panelX, panelY + headerHeight, panelX + sidebarWidth, panelY + panelHeight - footerHeight,
-                COLOR_SIDEBAR_TOP, COLOR_SIDEBAR_BOTTOM);
-        fillVerticalGradient(graphics, panelX, panelY + panelHeight - footerHeight, panelX + panelWidth, panelY + panelHeight,
-                COLOR_FOOTER_TOP, COLOR_FOOTER_BOTTOM);
+        graphics.fillGradient(panelX, panelY, panelX + panelWidth, panelY + headerHeight,
+            theme.headerTop, theme.headerBottom);
+        graphics.fillGradient(panelX, panelY + headerHeight, panelX + sidebarWidth, panelY + panelHeight - footerHeight,
+            theme.sidebarTop, theme.sidebarBottom);
+        graphics.fillGradient(panelX, panelY + panelHeight - footerHeight, panelX + panelWidth, panelY + panelHeight,
+            theme.footerTop, theme.footerBottom);
     }
 
-    private void drawCornerAccents(GuiGraphics graphics, int x, int y, int w, int h) {
+    private void drawCornerAccents(GuiGraphics graphics, int x, int y, int w, int h, Theme theme) {
         int len = Math.max(2, s(9));
         int thick = Math.max(1, s(2));
 
-        graphics.fill(x, y, x + len, y + thick, COLOR_ACCENT_BRIGHT);
-        graphics.fill(x, y, x + thick, y + len, COLOR_ACCENT_BRIGHT);
-        graphics.fill(x + w - len, y, x + w, y + thick, COLOR_ACCENT_BRIGHT);
-        graphics.fill(x + w - thick, y, x + w, y + len, COLOR_ACCENT_BRIGHT);
-        graphics.fill(x, y + h - thick, x + len, y + h, COLOR_ACCENT_BRIGHT);
-        graphics.fill(x, y + h - len, x + thick, y + h, COLOR_ACCENT_BRIGHT);
-        graphics.fill(x + w - len, y + h - thick, x + w, y + h, COLOR_ACCENT_BRIGHT);
-        graphics.fill(x + w - thick, y + h - len, x + w, y + h, COLOR_ACCENT_BRIGHT);
-    }
-
-    private static int lerpColor(int colorA, int colorB, float t) {
-        t = Math.max(0f, Math.min(1f, t));
-        int a1 = (colorA >> 24) & 0xFF, r1 = (colorA >> 16) & 0xFF, g1 = (colorA >> 8) & 0xFF, b1 = colorA & 0xFF;
-        int a2 = (colorB >> 24) & 0xFF, r2 = (colorB >> 16) & 0xFF, g2 = (colorB >> 8) & 0xFF, b2 = colorB & 0xFF;
-        int a = (int) (a1 + (a2 - a1) * t);
-        int r = (int) (r1 + (r2 - r1) * t);
-        int g = (int) (g1 + (g2 - g1) * t);
-        int b = (int) (b1 + (b2 - b1) * t);
-        return (a << 24) | (r << 16) | (g << 8) | b;
-    }
-
-    private static void fillVerticalGradient(GuiGraphics graphics, int x1, int y1, int x2, int y2, int colorTop, int colorBottom) {
-        int height = y2 - y1;
-        if (height <= 0) return;
-        for (int row = 0; row < height; row++) {
-            float t = height <= 1 ? 0f : (float) row / (height - 1);
-            int color = lerpColor(colorTop, colorBottom, t);
-            graphics.fill(x1, y1 + row, x2, y1 + row + 1, color);
-        }
+        graphics.fill(x, y, x + len, y + thick, theme.accentBright);
+        graphics.fill(x, y, x + thick, y + len, theme.accentBright);
+        graphics.fill(x + w - len, y, x + w, y + thick, theme.accentBright);
+        graphics.fill(x + w - thick, y, x + w, y + len, theme.accentBright);
+        graphics.fill(x, y + h - thick, x + len, y + h, theme.accentBright);
+        graphics.fill(x, y + h - len, x + thick, y + h, theme.accentBright);
+        graphics.fill(x + w - len, y + h - thick, x + w, y + h, theme.accentBright);
+        graphics.fill(x + w - thick, y + h - len, x + w, y + h, theme.accentBright);
     }
 
     public void drawDescription(GuiGraphics graphics, String translationKey, int x, int y) {
         Component desc = Component.translatable(translationKey)
-                .copy()
-                .withStyle(Style.EMPTY.withItalic(true));
-        graphics.pose().pushMatrix();
+            .copy()
+            .withStyle(Style.EMPTY.withItalic(true));
+        graphics.pose().pushPose();
         graphics.pose().translate(x, y);
-        graphics.pose().scale(0.75f * menuScale, 0.75f * menuScale);
+        graphics.pose().scale(0.75f, 0.75f);
         graphics.drawString(this.font, desc, 0, 0, 0x80999999, false);
-        graphics.pose().popMatrix();
+        graphics.pose().popPose();
+    }
+
+    private void drawLabel(GuiGraphics graphics, Component label, int x, int y) {
+        graphics.pose().pushPose();
+        graphics.pose().translate(x, y);
+        graphics.pose().scale(1.4f, 1.4f);
+        graphics.drawString(this.font, label, 0, 0, Theme.current().text, false);
+        graphics.pose().popPose();
     }
 
     @Override
-    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        for (AbstractWidget w : sectionWidgets) {
+            if (w instanceof DropdownWidget d && d.isOpen()) {
+                if (!d.isMouseOver(mouseX, mouseY) && !d.isOverExpandedArea(mouseX, mouseY)) {
+                    d.setOpen(false);
+                }
+            }
+        }
+
         ModSection active = sections.get(activeSectionId);
-        if (active != null && active.mouseClicked(event.x(), event.y(), event.button())) return true;
-        return super.mouseClicked(event, doubleClick);
+        if (active != null && active.mouseClicked(mouseX, mouseY, button)) return true;
+        return super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override
@@ -295,17 +333,17 @@ public class AcquiredUtilsConfigScreen extends Screen {
     }
 
     @Override
-    public boolean keyPressed(KeyEvent event) {
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         ModSection active = sections.get(activeSectionId);
-        if (active != null && active.keyPressed(event)) return true;
-        return super.keyPressed(event);
+        if (active != null && active.keyPressed(keyCode, scanCode, modifiers)) return true;
+        return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     @Override
     public void onClose() {
         for (ModSection section : sections.values()) section.onClose();
-        AcquiredUtilsConfig.save();
-        AcquiredUtils.LOGGER.info("[AcquiredUtils] Settings auto-saved on menu close");
+        AcquiredUtilsConfig.saveIfDirty();
+        AcquiredUtils.LOGGER.info("[AcquiredUtils] Settings saved on menu close");
         if (this.minecraft != null) this.minecraft.setScreen(parent);
     }
 }
