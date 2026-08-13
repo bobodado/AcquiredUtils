@@ -33,7 +33,7 @@ AcquiredUtils does not add content to the server and does not require changes to
 - Inventory item search and highlighting
 - Rarity indicators for custom items
 
-### Item Pickup
+### Item Pickup Notifications
 
 - Item pickup notifications
 - Rarity-aware notification colors
@@ -49,15 +49,6 @@ AcquiredUtils does not add content to the server and does not require changes to
 - Recipe unlock highlighting inside supported recipe vaults
 - Player inventory search highlighting
 - Configurable visual overlays
-
-### Interface
-
-- Purple and gold themed configuration interface
-- Searchable settings
-- Menu scaling
-- Scrollable settings sections
-- HUD editor with presets
-- Custom controls and keybind configuration
 
 ## Compatibility
 
@@ -78,19 +69,6 @@ The mod is intended to run on the client.
 4. Place the AcquiredUtils `.jar` file in your Minecraft `mods` directory.
 5. Launch Minecraft using your Fabric installation.
 
-## Configuration
-
-Open the AcquiredUtils configuration screen through the configured keybind or the available client configuration entry.
-
-Settings are organized into:
-
-- **General**
-- **Item Pickup**
-- **Overlays**
-- **Keybinds**
-
-The configuration menu includes a built-in search field for quickly finding settings.
-
 ## Development
 
 ### Requirements
@@ -100,27 +78,6 @@ The configuration menu includes a built-in search field for quickly finding sett
 - Minecraft 1.21.11
 - Fabric Loom
 - Fabric API
-
-### Build
-
-Linux / GitHub Codespaces:
-
-```bash
-chmod +x gradlew
-./gradlew build
-```
-
-Windows:
-
-```bat
-gradlew.bat build
-```
-
-The built mod is generated in:
-
-```text
-build/libs/
-```
 
 ## Project Structure
 
