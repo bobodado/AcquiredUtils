@@ -6,10 +6,12 @@ import dev.bobodado.acquiredutils.config.AcquiredUtilsConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.gui.narration.NarratedElementType;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
@@ -17,10 +19,23 @@ import java.util.function.IntSupplier;
 
 public class LockedKeybindWidget extends AbstractWidget implements KeyListenerSlot.Listener {
 
-    private static final int CHECKBOX_SIZE = 10;
+    private static final int CHECKBOX_SIZE = 12;
     private static final int KEY_BOX_WIDTH = 70;
-    private static final float LABEL_SCALE = 1.25f;
+    private static final int KEY_BOX_RIGHT_GAP = 20;
+    private static final int CONTENT_LEFT_INSET = 7;
 
+    private static final Identifier CHECKBOX_CHECKED =
+        Identifier.fromNamespaceAndPath(
+            "acquiredutils",
+            "textures/gui/checkbox_purple_checked.png"
+        );
+
+    private static final Identifier CHECKBOX_UNCHECKED =
+        Identifier.fromNamespaceAndPath(
+            "acquiredutils",
+            "textures/gui/checkbox_purple_unchecked.png"
+        );
+    
     private final KeyListenerSlot slot;
     private final BooleanSupplier enabledGetter;
     private final Consumer<Boolean> enabledSetter;
@@ -47,10 +62,6 @@ public class LockedKeybindWidget extends AbstractWidget implements KeyListenerSl
         this.keySetter = keySetter;
     }
 
-    private int s(int base) {
-        return (int) (base * AcquiredUtilsConfig.get().menuScale);
-    }
-
     @Override
     public void applyKeyCode(int keyCode) {
         keySetter.accept(keyCode);
@@ -73,55 +84,52 @@ public class LockedKeybindWidget extends AbstractWidget implements KeyListenerSl
         boolean enabled = enabledGetter.getAsBoolean();
         boolean listening = slot.isListening(this);
 
-        int cbSize = s(CHECKBOX_SIZE);
+        int cbSize = CHECKBOX_SIZE;
         int cbY = getY() + (height - cbSize) / 2;
 
-        graphics.fill(
-            getX(),
+        Identifier checkboxTexture = enabled
+            ? CHECKBOX_CHECKED
+            : CHECKBOX_UNCHECKED;
+
+        int cbX = getX() + CONTENT_LEFT_INSET;
+
+        graphics.blit(
+            RenderPipelines.GUI_TEXTURED,
+            checkboxTexture,
+            cbX,
             cbY,
-            getX() + cbSize,
-            cbY + cbSize,
-            theme.footerBottom
+            0.0f,
+            0.0f,
+            CHECKBOX_SIZE,
+            CHECKBOX_SIZE,
+            CHECKBOX_SIZE,
+            CHECKBOX_SIZE
         );
 
-        graphics.renderOutline(
-            getX(),
-            cbY,
-            cbSize,
-            cbSize,
-            enabled ? theme.accentBright : theme.frameMid
-        );
-
-        if (enabled) {
-            graphics.fill(
-                getX() + 2,
-                cbY + 2,
-                getX() + cbSize - 2,
-                cbY + cbSize - 2,
-                theme.accent
+        if (listening) {
+            graphics.renderOutline(
+                cbX - 1,
+                cbY - 1,
+                cbSize + 2,
+                cbSize + 2,
+                theme.accentBright
             );
         }
 
-        int labelX = getX() + cbSize + s(6);
-        int labelY = getY() + (int) ((height - 8 * LABEL_SCALE) / 2);
-
-        graphics.pose().pushMatrix();
-        graphics.pose().translate(labelX, labelY);
-        graphics.pose().scale(LABEL_SCALE, LABEL_SCALE);
+        int labelX = cbX + cbSize + 9;
+        int labelY = getY() + (height - 8) / 2;
 
         graphics.drawString(
             font,
             getMessage(),
-            0,
-            0,
+            labelX,
+            labelY,
             theme.text,
             false
         );
 
-        graphics.pose().popMatrix();
-
-        int keyBoxW = s(KEY_BOX_WIDTH);
-        int keyBoxX = getX() + width - keyBoxW;
+        int keyBoxW = KEY_BOX_WIDTH;
+        int keyBoxX = getX() + width - keyBoxW - KEY_BOX_RIGHT_GAP;
         int keyCode = keyGetter.getAsInt();
 
         String keyText = listening
@@ -170,12 +178,14 @@ public class LockedKeybindWidget extends AbstractWidget implements KeyListenerSl
         double mouseX = event.x();
         double mouseY = event.y();
 
-        int cbSize = s(CHECKBOX_SIZE);
+        int cbSize = CHECKBOX_SIZE;
         int cbY = getY() + (height - cbSize) / 2;
 
+        int cbX = getX() + CONTENT_LEFT_INSET;
+
         boolean onCheckbox =
-            mouseX >= getX()
-            && mouseX < getX() + cbSize
+            mouseX >= cbX
+            && mouseX < cbX + cbSize
             && mouseY >= cbY
             && mouseY < cbY + cbSize;
 
@@ -184,8 +194,8 @@ public class LockedKeybindWidget extends AbstractWidget implements KeyListenerSl
             return;
         }
 
-        int keyBoxW = s(KEY_BOX_WIDTH);
-        int keyBoxX = getX() + width - keyBoxW;
+        int keyBoxW = KEY_BOX_WIDTH;
+        int keyBoxX = getX() + width - keyBoxW - KEY_BOX_RIGHT_GAP;
 
         boolean onKeyBox =
             mouseX >= keyBoxX

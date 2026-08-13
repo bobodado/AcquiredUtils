@@ -20,23 +20,34 @@ public final class AcquiredUtilsConfig {
     private static final String FILE_NAME = "acquiredutils.json";
     private static AcquiredUtilsConfig INSTANCE = new AcquiredUtilsConfig();
 
-    public boolean showHudOverlay = true;
-    public float exampleSliderValue = 2.5f;
-    public GuiTheme guiTheme = GuiTheme.DARK;
+    public boolean itemPickupNotifierEnabled = true;
+    public float notificationDuration = 3.0f;
+    public float notificationPositionX = 0.5f;
+    public float notificationPositionY = 0.25f;
     public float menuScale = 1.0f;
+    public boolean recipeUnlockHighlightEnabled = true;
+
+    public boolean rarityCircleEnabled = true;
+    public String rarityCircleMinRarity = "COMMON";
+    public float rarityCircleSize = 5.0f;
+    public float rarityCircleOpacity = 1.0f;
+
+    public boolean itemComparisonEnabled = true;
 
     public boolean slotLockEnabled = false;
     public int slotLockKey = -1;
+    public int inventorySearchKey = 76;
+
+    public boolean autoProtectHotbar = false;
+    public boolean autoProtectInventory = false;
+    public boolean autoProtectArmor = false;
+    public boolean autoProtectOffhand = false;
+
+    public String notificationHudPreset = "custom";
 
     public Set<Integer> lockedSlots = new LinkedHashSet<>();
 
     private transient boolean dirty = false;
-
-    public enum GuiTheme {
-        DEFAULT,
-        DARK,
-        HIGH_CONTRAST
-    }
 
     private AcquiredUtilsConfig() {
     }
@@ -54,14 +65,23 @@ public final class AcquiredUtilsConfig {
     }
 
     public void sanitize() {
-        if (guiTheme == null) {
-            guiTheme = GuiTheme.DARK;
-        }
         if (lockedSlots == null) {
             lockedSlots = new LinkedHashSet<>();
         }
-        menuScale = Math.max(0.5f, Math.min(2.0f, menuScale));
-        exampleSliderValue = Math.max(0.1f, Math.min(5.0f, exampleSliderValue));
+        notificationDuration = Math.max(0.5f, Math.min(10.0f, notificationDuration));
+        notificationPositionX = Math.max(0.0f, Math.min(1.0f, notificationPositionX));
+        notificationPositionY = Math.max(0.0f, Math.min(1.0f, notificationPositionY));
+        menuScale = Math.max(0.5f, Math.min(1.5f, menuScale));
+        rarityCircleSize = Math.max(3.0f, Math.min(8.0f, rarityCircleSize));
+        rarityCircleOpacity = Math.max(0.15f, Math.min(1.0f, rarityCircleOpacity));
+
+        if (rarityCircleMinRarity == null) {
+            rarityCircleMinRarity = "COMMON";
+        }
+        if (notificationHudPreset == null) {
+            notificationHudPreset = "custom";
+        }
+
         lockedSlots.removeIf(idx -> idx == null || idx < 0 || idx > 40);
     }
 

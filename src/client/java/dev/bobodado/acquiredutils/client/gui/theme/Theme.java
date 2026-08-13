@@ -1,34 +1,15 @@
 package dev.bobodado.acquiredutils.client.gui.theme;
 
-import dev.bobodado.acquiredutils.config.AcquiredUtilsConfig;
-
 public enum Theme {
-    DEFAULT(
-        0xFF32241C, 0xFF1C1512,
-        0xFF140D08, 0xFF8B5A2B, 0xFFD98F3E,
-        0xFF3A2A1E, 0xFF1F1611,
-        0xFF241A14, 0xFF1A130F,
-        0xFF1F1611, 0xFF140E0A,
-        0x40D98F3E, 0x60000000, 0x33D98F3E,
-        0xFFF2F2F2, 0xFFE38A2D, 0xFFD98F3E, 0xCCE0A868
-    ),
-    DARK(
-        0xFF1A1A1A, 0xFF0D0D0D,
-        0xFF000000, 0xFF555555, 0xFF888888,
-        0xFF222222, 0xFF111111,
-        0xFF1A1A1A, 0xFF111111,
-        0xFF111111, 0xFF0A0A0A,
-        0x40888888, 0x60000000, 0x33888888,
-        0xFFF2F2F2, 0xFFAAAAAA, 0xFF888888, 0xCCAAAAAA
-    ),
-    HIGH_CONTRAST(
-        0xFF000000, 0xFF000000,
-        0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFF00,
-        0xFF000000, 0xFF000000,
-        0xFF000000, 0xFF000000,
-        0xFF000000, 0xFF000000,
-        0xFFFFFFFF, 0x60000000, 0xFFFFFF00,
-        0xFFFFFFFF, 0xFFFFFF00, 0xFFFFFF00, 0xCCFFFFFF
+    PURPLE(
+        0xFF2A1738, 0xFF0E0914,
+        0xFF6A4A72, 0xFF8E6AA3, 0xFFD9A441,
+        0xFF24142F, 0xFF120A1B,
+        0xFF24122E, 0xFF110918,
+        0xFF22122A, 0xFF100914,
+        0xFFD4A64D, 0xB9000000, 0x5A3A214D,
+        0xFFF2EAF7, 0xFFC47BEE, 0xFFE2B85A, 0xFFD2C7DA,
+        0xFF2C1A3A, 0xFF16101F
     );
 
     public final int panelTop, panelBottom;
@@ -38,6 +19,7 @@ public enum Theme {
     public final int footerTop, footerBottom;
     public final int divider, shadow, tabActiveBg;
     public final int text, accent, accentBright, credit;
+    public final int sliderTrack, buttonBottom;
 
     Theme(int panelTop, int panelBottom,
           int frameOuter, int frameMid, int frameAccent,
@@ -45,7 +27,8 @@ public enum Theme {
           int sidebarTop, int sidebarBottom,
           int footerTop, int footerBottom,
           int divider, int shadow, int tabActiveBg,
-          int text, int accent, int accentBright, int credit) {
+          int text, int accent, int accentBright, int credit,
+          int sliderTrack, int buttonBottom) {
         this.panelTop = panelTop;
         this.panelBottom = panelBottom;
         this.frameOuter = frameOuter;
@@ -64,13 +47,11 @@ public enum Theme {
         this.accent = accent;
         this.accentBright = accentBright;
         this.credit = credit;
+        this.sliderTrack = sliderTrack;
+        this.buttonBottom = buttonBottom;
     }
 
     public static Theme current() {
-        return switch (AcquiredUtilsConfig.get().guiTheme) {
-            case DEFAULT -> DEFAULT;
-            case HIGH_CONTRAST -> HIGH_CONTRAST;
-            default -> DARK;
-        };
+        return PURPLE;
     }
 }

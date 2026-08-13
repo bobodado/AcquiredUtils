@@ -11,16 +11,16 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.Options;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
-import net.minecraft.world.inventory.Slot;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.inventory.Slot;
 
 public final class SlotLockHandler {
-	
-private static final Identifier LOCK_TEXTURE =
-    Identifier.fromNamespaceAndPath(
-        "acquiredutils",
-        "textures/gui/lock.png"
-    );
+
+    private static final Identifier LOCK_TEXTURE =
+        Identifier.fromNamespaceAndPath(
+            AcquiredUtils.MOD_ID,
+            "textures/gui/lock.png"
+        );
 
     private SlotLockHandler() {
     }
@@ -46,6 +46,7 @@ private static final Identifier LOCK_TEXTURE =
                 if (!AcquiredUtilsConfig.get().slotLockEnabled) return true;
 
                 int keyCode = InputConstants.getKey(event).getValue();
+                if (keyCode < 0) return true;
                 Options options = Minecraft.getInstance().options;
 
                 if (keyCode == AcquiredUtilsConfig.get().slotLockKey && keyCode >= 0) {
@@ -76,11 +77,6 @@ private static final Identifier LOCK_TEXTURE =
 
                 return true;
             });
-
-            ScreenEvents.afterRender(screen).register((s, graphics, mouseX, mouseY, partialTick) -> {
-                if (!AcquiredUtilsConfig.get().slotLockEnabled) return;
-                renderLockedSlots(graphics, containerScreen);
-            });
         });
 
         ClientTickEvents.START_CLIENT_TICK.register(client -> {
@@ -96,6 +92,29 @@ private static final Identifier LOCK_TEXTURE =
         });
     }
 
+    public static void renderOverlay(
+        GuiGraphics graphics,
+        AbstractContainerScreen<?> screen,
+        int leftPos,
+        int topPos
+    ) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || !AcquiredUtilsConfig.get().slotLockEnabled) return;
+
+        for (Slot slot : screen.getMenu().slots) {
+            if (slot.container == mc.player.getInventory()
+                && slot.isActive()
+                && isLocked(slot.getContainerSlot())) {
+
+                drawPadlock(
+                    graphics,
+                    leftPos + slot.x,
+                    topPos + slot.y
+                );
+            }
+        }
+    }
+
     private static void toggleHoveredSlot(AbstractContainerScreen<?> screen) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
@@ -105,6 +124,8 @@ private static final Identifier LOCK_TEXTURE =
 
         int idx = hovered.getContainerSlot();
         java.util.Set<Integer> locked = AcquiredUtilsConfig.get().lockedSlots;
+
+        if (idx < 0 || idx > 40) return;
 
         if (locked.contains(idx)) {
             locked.remove(idx);
@@ -125,32 +146,39 @@ private static final Identifier LOCK_TEXTURE =
         return mc.player != null && slot.container == mc.player.getInventory();
     }
 
-    private static boolean isLocked(int containerSlotIndex) {
-        return AcquiredUtilsConfig.get().lockedSlots.contains(containerSlotIndex);
+    public static boolean isLocked(int containerSlotIndex) {
+        AcquiredUtilsConfig cfg = AcquiredUtilsConfig.get();
+
+        if (cfg.lockedSlots.contains(containerSlotIndex)) {
+            return true;
+        }
+
+        if (containerSlotIndex >= 0 && containerSlotIndex <= 8 && cfg.autoProtectHotbar) {
+            return true;
+        }
+
+        if (containerSlotIndex >= 9 && containerSlotIndex <= 35 && cfg.autoProtectInventory) {
+            return true;
+        }
+
+        if (containerSlotIndex >= 36 && containerSlotIndex <= 39 && cfg.autoProtectArmor) {
+            return true;
+        }
+
+        return containerSlotIndex == 40 && cfg.autoProtectOffhand;
     }
 
-    private static void renderLockedSlots(
-        GuiGraphics graphics,
-        AbstractContainerScreen<?> screen
-    ) {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null) return;
-
-        int left = screen.leftPos;
-        int top = screen.topPos;
-
-        for (Slot slot : screen.getMenu().slots) {
-            if (slot.container == mc.player.getInventory()
-                && slot.isActive()
-                && isLocked(slot.getContainerSlot())) {
-
-                drawPadlock(
-                    graphics,
-                    left + slot.x,
-                    top + slot.y
-                );
-            }
+    public static void lockAll() {
+        AcquiredUtilsConfig.get().lockedSlots.clear();
+        for (int i = 0; i <= 40; i++) {
+            AcquiredUtilsConfig.get().lockedSlots.add(i);
         }
+        AcquiredUtilsConfig.save();
+    }
+
+    public static void unlockAllManual() {
+        AcquiredUtilsConfig.get().lockedSlots.clear();
+        AcquiredUtilsConfig.save();
     }
 
     private static void drawPadlock(GuiGraphics graphics, int x, int y) {

@@ -45,10 +45,6 @@ public class DropdownWidget extends AbstractWidget {
         this.open = open;
     }
 
-    private int s(int base) {
-        return (int) (base * AcquiredUtilsConfig.get().menuScale);
-    }
-
     @Override
     protected void renderWidget(
         GuiGraphics graphics,
@@ -109,7 +105,7 @@ public class DropdownWidget extends AbstractWidget {
         Theme theme = Theme.current();
 
         int listY = getY() + height;
-        int rowHeight = s(ROW_HEIGHT);
+        int rowHeight = ROW_HEIGHT;
         int listHeight = options.size() * rowHeight;
 
         graphics.fill(
@@ -159,7 +155,7 @@ public class DropdownWidget extends AbstractWidget {
 
         if (open) {
             int listY = getY() + height;
-            int rowHeight = s(ROW_HEIGHT);
+            int rowHeight = ROW_HEIGHT;
             int listHeight = options.size() * rowHeight;
 
             if (mouseX >= getX()
@@ -194,7 +190,7 @@ public class DropdownWidget extends AbstractWidget {
         }
 
         int listY = getY() + height;
-        int listHeight = options.size() * s(ROW_HEIGHT);
+        int listHeight = options.size() * ROW_HEIGHT;
 
         return mouseX >= getX()
             && mouseX < getX() + width
