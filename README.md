@@ -125,15 +125,107 @@ build/libs/
 ## Project Structure
 
 ```text
-src/
-├── main/
-│   ├── java/
-│   └── resources/
-└── client/
-    └── java/
+AcquiredUtils/
+├── build.gradle
+├── gradle.properties
+├── settings.gradle
+├── gradlew
+├── gradlew.bat
+├── LICENSE
+│
+├── gradle/
+│   └── wrapper/
+│       ├── gradle-wrapper.jar
+│       └── gradle-wrapper.properties
+│
+└── src/
+    ├── main/
+    │   ├── java/
+    │   │   └── dev/bobodado/acquiredutils/
+    │   │       ├── AcquiredUtils.java
+    │   │       └── config/
+    │   │           └── AcquiredUtilsConfig.java
+    │   │
+    │   └── resources/
+    │       ├── fabric.mod.json
+    │       ├── acquiredutils.accesswidener
+    │       └── assets/acquiredutils/
+    │           ├── icon.png
+    │           ├── lang/
+    │           │   └── en_us.json
+    │           └── textures/gui/
+    │               ├── button_save.png
+    │               ├── checkbox_checked.png
+    │               ├── checkbox_purple_checked.png
+    │               ├── checkbox_purple_unchecked.png
+    │               ├── checkbox_unchecked.png
+    │               ├── close_button.png
+    │               ├── dropdown_closed.png
+    │               ├── dropdown_open_bg.png
+    │               ├── dropdown_selection_highlight.png
+    │               ├── header_footer_bar.png
+    │               ├── icon_gear.png
+    │               ├── icon_header.png
+    │               ├── icon_keyboard.png
+    │               ├── icon_mod.png
+    │               ├── lock.png
+    │               ├── menu_backdrop.png
+    │               ├── panel_background.png
+    │               ├── panel_frame.png
+    │               ├── slider_handle.png
+    │               ├── slider_track.png
+    │               └── tab_active_frame.png
+    │
+    └── client/
+        └── java/
+            └── dev/bobodado/acquiredutils/client/
+                ├── AcquiredUtilsClient.java
+                ├── ContainerOverlayHandler.java
+                ├── InventorySearchHandler.java
+                ├── ItemComparisonHandler.java
+                ├── SlotLockHandler.java
+                │
+                ├── gui/
+                │   ├── AcquiredUtilsConfigScreen.java
+                │   ├── PickupHudEditorScreen.java
+                │   │
+                │   ├── section/
+                │   │   ├── GeneralSection.java
+                │   │   ├── GuiRow.java
+                │   │   ├── ItemPickupSection.java
+                │   │   ├── KeybindsSection.java
+                │   │   ├── ModSection.java
+                │   │   └── OverlaysSection.java
+                │   │
+                │   ├── theme/
+                │   │   └── Theme.java
+                │   │
+                │   └── widget/
+                │       ├── DropdownWidget.java
+                │       ├── KeyListenerSlot.java
+                │       ├── LockedKeybindWidget.java
+                │       ├── ThemedButtonWidget.java
+                │       └── ValueSliderWidget.java
+                │
+                ├── pickup/
+                │   ├── ItemPickupNotifier.java
+                │   ├── ItemRarity.java
+                │   ├── ItemRarityDetector.java
+                │   ├── PickupNotification.java
+                │   └── RarityHighlightHandler.java
+                │
+                └── recipe/
+                    └── RecipeUnlockHighlightHandler.java
 ```
 
-Client-side functionality is contained in the client source set.
+### Source Set Overview
+
+- **`src/main/java`** — shared mod entrypoint and configuration.
+- **`src/client/java`** — client-only gameplay utilities, GUI, HUD, inventory features, and visual overlays.
+- **`src/main/resources`** — Fabric metadata, access configuration, language files, the mod icon, and GUI textures.
+- **`src/client/java/.../gui`** — configuration screen, HUD editor, sections, theme, and custom widgets.
+- **`src/client/java/.../pickup`** — pickup notifications and rarity detection/highlighting.
+- **`src/client/java/.../recipe`** — recipe-vault unlock highlighting.
 
 ## License
 
