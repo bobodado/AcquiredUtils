@@ -5,18 +5,18 @@
 <h1 align="center">AcquiredUtils</h1>
 
 <p align="center">
-  Client-side Fabric utilities for FakePixel SMP.
+  Fabric utilities mod for FakePixel SMP.
 </p>
 
 <p align="center">
-  <b>Minecraft 1.21.11</b> · <b>Fabric</b> · <b>Client-side</b>
+  <b>Minecraft 1.21.11</b> · <b>Fabric (Only!)</b>
 </p>
 
 ---
 
 ## Overview
 
-AcquiredUtils is a client-side utility mod designed for the **FakePixel SMP** experience.
+AcquiredUtils is a utility mod designed for the **FakePixel SMP** experience.
 
 It provides lightweight quality-of-life features for inventory management, item collection, rarity recognition, recipe-vault interaction, HUD customization, and other everyday gameplay tasks.
 
